@@ -227,6 +227,17 @@
   }
   .clear-btn:active { background: #050505; }
 
+  .vol-row { margin-top: 10px; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+
+  .track-name-wrap {
+    display: flex; flex-direction: column; align-items: flex-end;
+    gap: 2px; padding-right: 4px; cursor: pointer;
+  }
+  .track-name-wrap .tn-label { font-size: 10px; letter-spacing: 0.2em; color: var(--dim); }
+  .track-name-wrap.target-name .tn-label { color: var(--target); }
+  .track-name-wrap .tn-level { font-size: 8px; letter-spacing: 0.1em; color: var(--dim); }
+  .track-name-wrap .tn-level.mute { color: #333; }
+
   /* TUNER */
   .tuner-toggle {
     width: 100%; padding: 12px;
@@ -308,7 +319,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v0.4</div>
+    <div class="meta">v0.5</div>
   </header>
 
   <section class="display">
@@ -357,6 +368,12 @@
     </div>
 
     <div class="beats" id="beats" style="--steps:4"></div>
+
+    <div class="vol-row">
+      <span class="label-sm">VOL</span>
+      <input type="range" id="masterVol" min="0" max="100" value="80" />
+      <span class="label-sm" id="masterVolPct">80%</span>
+    </div>
   </section>
 
   <div class="transport">
@@ -497,6 +514,7 @@
     metroOn: true, playing: false,
     pattern: { kick: [], snare: [], hat: [], target: [] },
     activePreset: 'off',
+    levels: { kick: 1.0, snare: 1.0, hat: 1.0, target: 1.0 },
   };
 
   const $ = id => document.getElementById(id);
@@ -506,10 +524,21 @@
   const tapBtn = $('tapBtn');
   const halfTimeBtn = $('halfTimeBtn'), halfTimeVal = $('halfTimeVal');
   const presetRow = $('presetRow'), countRow = $('countRow');
+  const masterVolEl = $('masterVol'), masterVolPct = $('masterVolPct');
+  masterVolEl.addEventListener('input', () => {
+    const v = +masterVolEl.value / 100;
+    if (masterGain) masterGain.gain.value = v;
+    masterVolPct.textContent = masterVolEl.value + '%';
+  });
 
-  let audioCtx = null;
+  let audioCtx = null, masterGain = null;
   function ensureAudio() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint:'interactive' });
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint:'interactive' });
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.8;
+      masterGain.connect(audioCtx.destination);
+    }
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
@@ -523,7 +552,7 @@
     gain.gain.setValueAtTime(0.0001, time);
     gain.gain.exponentialRampToValueAtTime(0.6, time + 0.001);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
-    osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+    osc1.connect(gain); osc2.connect(gain); gain.connect(masterGain);
     osc1.start(time); osc2.start(time);
     osc1.stop(time + 0.13); osc2.stop(time + 0.13);
   }
@@ -537,32 +566,32 @@
     gain.gain.setValueAtTime(0.0001, time);
     gain.gain.exponentialRampToValueAtTime(vol, time + 0.001);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-    osc.connect(gain).connect(ctx.destination);
+    osc.connect(gain).connect(masterGain);
     osc.start(time); osc.stop(time + dur + 0.01);
   }
-  function playTarget(time) {
+  function playTarget(time, vol = 1) {
     const ctx = audioCtx;
     const osc = ctx.createOscillator(); const gain = ctx.createGain();
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(1500, time);
     osc.frequency.exponentialRampToValueAtTime(900, time + 0.05);
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(0.5, time + 0.001);
+    gain.gain.exponentialRampToValueAtTime(0.5 * vol, time + 0.001);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
-    osc.connect(gain).connect(ctx.destination);
+    osc.connect(gain).connect(masterGain);
     osc.start(time); osc.stop(time + 0.09);
   }
-  function playKick(time) {
+  function playKick(time, vol = 1) {
     const ctx = audioCtx;
     const osc = ctx.createOscillator(), gain = ctx.createGain();
     osc.frequency.setValueAtTime(140, time);
     osc.frequency.exponentialRampToValueAtTime(40, time + 0.12);
-    gain.gain.setValueAtTime(0.9, time);
+    gain.gain.setValueAtTime(0.9 * vol, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
-    osc.connect(gain).connect(ctx.destination);
+    osc.connect(gain).connect(masterGain);
     osc.start(time); osc.stop(time + 0.4);
   }
-  function playSnare(time) {
+  function playSnare(time, vol = 1) {
     const ctx = audioCtx;
     const buf = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
     const data = buf.getChannelData(0);
@@ -570,18 +599,18 @@
     const noise = ctx.createBufferSource(); noise.buffer = buf;
     const filt = ctx.createBiquadFilter(); filt.type='highpass'; filt.frequency.value=1500;
     const ng = ctx.createGain();
-    ng.gain.setValueAtTime(0.6, time);
+    ng.gain.setValueAtTime(0.6 * vol, time);
     ng.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
-    noise.connect(filt).connect(ng).connect(ctx.destination);
+    noise.connect(filt).connect(ng).connect(masterGain);
     noise.start(time); noise.stop(time + 0.2);
     const osc = ctx.createOscillator(), og = ctx.createGain();
     osc.frequency.value = 200;
-    og.gain.setValueAtTime(0.4, time);
+    og.gain.setValueAtTime(0.4 * vol, time);
     og.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-    osc.connect(og).connect(ctx.destination);
+    osc.connect(og).connect(masterGain);
     osc.start(time); osc.stop(time + 0.12);
   }
-  function playHat(time) {
+  function playHat(time, vol = 1) {
     const ctx = audioCtx;
     const buf = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
     const data = buf.getChannelData(0);
@@ -589,9 +618,9 @@
     const noise = ctx.createBufferSource(); noise.buffer = buf;
     const filt = ctx.createBiquadFilter(); filt.type='highpass'; filt.frequency.value=7000;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.25, time);
+    g.gain.setValueAtTime(0.25 * vol, time);
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-    noise.connect(filt).connect(g).connect(ctx.destination);
+    noise.connect(filt).connect(g).connect(masterGain);
     noise.start(time); noise.stop(time + 0.06);
   }
 
@@ -615,10 +644,10 @@
       else if (state.clickSub >= 2 && isEighth) playClick(time, 'mid');
       else if (state.clickSub >= 4) playClick(time, 'soft');
     }
-    if (state.pattern.target[stepIndex]) playTarget(time);
-    if (state.pattern.kick[stepIndex])   playKick(time);
-    if (state.pattern.snare[stepIndex])  playSnare(time);
-    if (state.pattern.hat[stepIndex])    playHat(time);
+    if (state.pattern.target[stepIndex]) playTarget(time, state.levels.target);
+    if (state.pattern.kick[stepIndex])   playKick(time, state.levels.kick);
+    if (state.pattern.snare[stepIndex])  playSnare(time, state.levels.snare);
+    if (state.pattern.hat[stepIndex])    playHat(time, state.levels.hat);
 
     const uiAt = (time - audioCtx.currentTime) * 1000;
     setTimeout(() => updatePlayheadUI(stepIndex), Math.max(0, uiAt));
@@ -732,6 +761,8 @@
     { key:'snare',  label:'SNR',  className:'' },
     { key:'hat',    label:'HAT',  className:'' },
   ];
+  function levelText(v) { return v >= 1.0 ? '100' : v >= 0.5 ? '50' : 'OFF'; }
+
   function renderGroove() {
     const m = meterDefs[state.meter];
     grooveGrid.innerHTML = '';
@@ -739,7 +770,19 @@
       const row = document.createElement('div');
       row.className = 'pattern-row';
       const name = document.createElement('div');
-      name.className = 'track-name ' + t.className; name.textContent = t.label;
+      name.className = 'track-name-wrap ' + t.className;
+      const lbl = document.createElement('div');
+      lbl.className = 'tn-label'; lbl.textContent = t.label;
+      const lvl = document.createElement('div');
+      lvl.className = 'tn-level' + (state.levels[t.key] === 0 ? ' mute' : '');
+      lvl.textContent = levelText(state.levels[t.key]);
+      name.appendChild(lbl); name.appendChild(lvl);
+      name.addEventListener('click', () => {
+        const cur = state.levels[t.key];
+        state.levels[t.key] = cur >= 1.0 ? 0.5 : cur >= 0.5 ? 0.0 : 1.0;
+        lvl.textContent = levelText(state.levels[t.key]);
+        lvl.className = 'tn-level' + (state.levels[t.key] === 0 ? ' mute' : '');
+      });
       const stepsEl = document.createElement('div');
       stepsEl.className = 'steps';
       stepsEl.style.gridTemplateColumns = `repeat(${m.gridCols}, 1fr)`;
@@ -903,12 +946,13 @@
 
   let tunerState = {
     on: false,
-    targetIdx: -1,        // -1 = AUTO, otherwise index into bassStrings
+    targetIdx: -1,
     audioCtx: null,
     analyser: null,
     micStream: null,
     rafId: null,
     buffer: null,
+    freqHistory: [],
   };
 
   function buildTunerTargets() {
@@ -1066,11 +1110,29 @@
       tunerLed.classList.add('tuner-on');
       tunerError.style.display = 'none';
 
+      const HIST = 8;
       const loop = () => {
         if (!tunerState.on) return;
         tunerState.analyser.getFloatTimeDomainData(tunerState.buffer);
-        const freq = autoCorrelate(tunerState.buffer, audioCtx.sampleRate);
-        updateTunerDisplay(freq);
+        const raw = autoCorrelate(tunerState.buffer, audioCtx.sampleRate);
+        if (raw > 20) {
+          tunerState.freqHistory.push(raw);
+          if (tunerState.freqHistory.length > HIST) tunerState.freqHistory.shift();
+          // stability gate: reject if recent readings span > 20 cents
+          if (tunerState.freqHistory.length >= 3) {
+            const recent = tunerState.freqHistory.slice(-4);
+            const spreadCents = 1200 * Math.log2(Math.max(...recent) / Math.min(...recent));
+            if (spreadCents > 20) {
+              tunerState.rafId = requestAnimationFrame(loop);
+              return;
+            }
+          }
+          const sorted = [...tunerState.freqHistory].sort((a, b) => a - b);
+          updateTunerDisplay(sorted[Math.floor(sorted.length / 2)]);
+        } else {
+          tunerState.freqHistory = [];
+          updateTunerDisplay(-1);
+        }
         tunerState.rafId = requestAnimationFrame(loop);
       };
       loop();
@@ -1083,6 +1145,7 @@
   }
   function stopTuner() {
     tunerState.on = false;
+    tunerState.freqHistory = [];
     if (tunerState.rafId) cancelAnimationFrame(tunerState.rafId);
     if (tunerState.micStream) {
       tunerState.micStream.getTracks().forEach(t => t.stop());
