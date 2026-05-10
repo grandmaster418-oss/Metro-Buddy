@@ -310,10 +310,25 @@
     text-align: center;
   }
 
-  .accent-display {
-    margin-top: 10px; padding: 8px;
-    font-size: 10px; color: var(--dim); letter-spacing: 0.1em;
-    text-align: center; line-height: 1.6;
+  .accent-beat-labels {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    margin-top: 10px; margin-bottom: 3px;
+    font-size: 9px; color: var(--dim); letter-spacing: 0.14em; text-align: center;
+  }
+  .accent-beat-labels span:first-child { color: var(--target); }
+  .accent-grid {
+    display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px;
+  }
+  .accent-cell {
+    height: 18px; background: #0a0a0a;
+    border: 1px solid var(--line); border-radius: 2px;
+    transition: background .1s ease;
+  }
+  .accent-cell.beat-start { border-color: #383838; }
+  .accent-cell.beat-one { border-color: var(--target); }
+  .accent-cell.lit {
+    background: var(--accent); border-color: var(--accent-soft);
+    box-shadow: 0 0 8px rgba(255,91,31,0.4);
   }
   #accentToggle[data-on="true"] {
     background: linear-gradient(180deg, var(--accent), #c83f0e);
@@ -329,7 +344,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v0.6</div>
+    <div class="meta">v0.7</div>
   </header>
 
   <section class="display">
@@ -427,7 +442,8 @@
         </div>
       </div>
       <button class="btn" id="accentToggle" style="margin-top:12px; height:48px;" data-on="false">ACCENT · OFF</button>
-      <div class="accent-display" id="accentDisplay">— play to start —</div>
+      <div class="accent-beat-labels"><span>1</span><span>2</span><span>3</span><span>4</span></div>
+      <div class="accent-grid" id="accentGrid"></div>
     </div>
   </section>
 
@@ -472,11 +488,12 @@
   </section>
 
   <!-- GROOVE -->
-  <section class="section">
-    <h2>
+  <section class="section collapsed" id="grooveSection">
+    <h2 id="grooveHeader" style="cursor:pointer;">
       <span id="grooveTitle">GROOVE · 16 STEP</span>
       <span class="h2-right">
         <span class="led" id="grooveLed"></span>
+        <span class="chevron">▾</span>
       </span>
     </h2>
     <div class="section-body">
@@ -583,7 +600,25 @@
   });
 
   const accentSection = $('accentSection'), accentLed = $('accentLed');
-  const accentToggle = $('accentToggle'), accentDisplayEl = $('accentDisplay');
+  const accentToggle = $('accentToggle');
+
+  function renderAccentGrid() {
+    const grid = $('accentGrid');
+    grid.innerHTML = '';
+    for (let i = 0; i < 16; i++) {
+      const c = document.createElement('div');
+      c.className = 'accent-cell';
+      if (i === 0) c.classList.add('beat-one');
+      else if ([4, 8, 12].includes(i)) c.classList.add('beat-start');
+      grid.appendChild(c);
+    }
+  }
+  function updateAccentGrid(positions) {
+    const cells = $('accentGrid').querySelectorAll('.accent-cell');
+    cells.forEach((c, i) => c.classList.toggle('lit', positions.includes(i)));
+  }
+
+  $('grooveHeader').addEventListener('click', () => $('grooveSection').classList.toggle('collapsed'));
 
   $('accentHeader').addEventListener('click', () => accentSection.classList.toggle('collapsed'));
 
@@ -595,7 +630,7 @@
     if (!state.accent.on) {
       state.accent.positions = [];
       state.accent.barCount = 0;
-      accentDisplayEl.textContent = '— play to start —';
+      updateAccentGrid([]);
     }
   });
 
@@ -756,12 +791,7 @@
       if (stepIndex === 0) {
         const lastPos = state.accent.positions.slice();
         const uiAt = (time - audioCtx.currentTime) * 1000;
-        setTimeout(() => {
-          if (lastPos.length) {
-            const labels = meterDefs['4-4'].countLabels;
-            accentDisplayEl.textContent = 'LAST BAR: ' + lastPos.map(i => labels[i]).join(' · ');
-          }
-        }, Math.max(0, uiAt));
+        setTimeout(() => updateAccentGrid(lastPos), Math.max(0, uiAt));
         if (state.accent.barCount % state.accent.rate === 0) randomizeAccents();
         state.accent.barCount++;
       }
@@ -803,7 +833,7 @@
     document.querySelectorAll('.beat.active').forEach(e => e.classList.remove('active'));
     state.accent.positions = [];
     state.accent.barCount = 0;
-    if (accentDisplayEl) accentDisplayEl.textContent = '— play to start —';
+    updateAccentGrid([]);
   }
 
   function setBPM(v) {
@@ -1019,6 +1049,7 @@
   setBPM(100);
   renderBeatIndicator();
   renderCountRow();
+  renderAccentGrid();
   state.pattern = { kick: [], snare: [], hat: [], target: [] };
   applyPreset('off');
 
