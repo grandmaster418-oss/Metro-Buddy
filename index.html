@@ -344,7 +344,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v0.7</div>
+    <div class="meta">v0.8</div>
   </header>
 
   <section class="display">
@@ -433,15 +433,10 @@
           </div>
         </div>
       </div>
-      <div class="pill" style="margin-top:10px;">
-        <span class="k">CHANGE EVERY</span>
-        <div class="seg" id="accentRateSeg">
-          <button data-rate="1" class="active">1 BAR</button>
-          <button data-rate="2">2 BARS</button>
-          <button data-rate="4">4 BARS</button>
-        </div>
+      <div class="transport" style="margin-top:12px;">
+        <button class="btn" id="accentToggle" data-on="false">ACCENT · OFF</button>
+        <button class="btn" id="accentNewBtn" disabled>NEW</button>
       </div>
-      <button class="btn" id="accentToggle" style="margin-top:12px; height:48px;" data-on="false">ACCENT · OFF</button>
       <div class="accent-beat-labels"><span>1</span><span>2</span><span>3</span><span>4</span></div>
       <div class="accent-grid" id="accentGrid"></div>
     </div>
@@ -582,7 +577,7 @@
     pattern: { kick: [], snare: [], hat: [], target: [] },
     activePreset: 'off',
     levels: { kick: 1.0, snare: 1.0, hat: 1.0, target: 1.0 },
-    accent: { on: false, density: 2, rate: 1, grid: '8th', positions: [], barCount: 0 },
+    accent: { on: false, density: 2, grid: '8th', positions: [] },
   };
 
   const $ = id => document.getElementById(id);
@@ -622,17 +617,23 @@
 
   $('accentHeader').addEventListener('click', () => accentSection.classList.toggle('collapsed'));
 
+  const accentNewBtn = $('accentNewBtn');
+
   accentToggle.addEventListener('click', () => {
     state.accent.on = !state.accent.on;
     accentToggle.textContent = 'ACCENT · ' + (state.accent.on ? 'ON' : 'OFF');
     accentToggle.dataset.on = state.accent.on;
     accentLed.classList.toggle('on', state.accent.on);
-    if (!state.accent.on) {
+    accentNewBtn.disabled = !state.accent.on;
+    if (state.accent.on) {
+      randomizeAccents();
+    } else {
       state.accent.positions = [];
-      state.accent.barCount = 0;
       updateAccentGrid([]);
     }
   });
+
+  accentNewBtn.addEventListener('click', () => randomizeAccents());
 
   function accentSegHandler(segId, key, parse) {
     $(segId).addEventListener('click', e => {
@@ -640,13 +641,11 @@
       document.querySelectorAll('#' + segId + ' button').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
       state.accent[key] = parse(b.dataset[key]);
-      state.accent.positions = [];
-      state.accent.barCount = 0;
+      if (state.accent.on) randomizeAccents();
     });
   }
   accentSegHandler('accentGridSeg',    'grid',    v => v);
   accentSegHandler('accentDensitySeg', 'density', v => +v);
-  accentSegHandler('accentRateSeg',    'rate',    v => +v);
 
   let audioCtx = null, masterGain = null;
   function ensureAudio() {
@@ -760,6 +759,7 @@
       : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     state.accent.positions = shuffled.slice(0, state.accent.density).sort((a, b) => a - b);
+    updateAccentGrid(state.accent.positions);
   }
 
   let currentStep = 0, nextNoteTime = 0, timerId = null;
@@ -788,13 +788,6 @@
     if (state.pattern.hat[stepIndex])    playHat(time, state.levels.hat);
 
     if (state.accent.on && state.meter === '4-4') {
-      if (stepIndex === 0) {
-        const lastPos = state.accent.positions.slice();
-        const uiAt = (time - audioCtx.currentTime) * 1000;
-        setTimeout(() => updateAccentGrid(lastPos), Math.max(0, uiAt));
-        if (state.accent.barCount % state.accent.rate === 0) randomizeAccents();
-        state.accent.barCount++;
-      }
       if (state.accent.positions.includes(stepIndex)) playAccent(time);
     }
 
@@ -832,7 +825,6 @@
     document.querySelectorAll('.step.playhead').forEach(e => e.classList.remove('playhead'));
     document.querySelectorAll('.beat.active').forEach(e => e.classList.remove('active'));
     state.accent.positions = [];
-    state.accent.barCount = 0;
     updateAccentGrid([]);
   }
 
