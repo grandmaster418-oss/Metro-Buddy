@@ -330,6 +330,10 @@
     background: var(--accent); border-color: var(--accent-soft);
     box-shadow: 0 0 8px rgba(255,91,31,0.4);
   }
+  .accent-text {
+    margin-top: 8px; font-size: 11px; color: var(--accent-soft);
+    letter-spacing: 0.14em; text-align: center;
+  }
   #accentToggle[data-on="true"] {
     background: linear-gradient(180deg, var(--accent), #c83f0e);
     color: #1a0a02; border-color: #2a0d00;
@@ -344,7 +348,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v1.0</div>
+    <div class="meta">v1.1</div>
   </header>
 
   <section class="display">
@@ -439,6 +443,7 @@
       </div>
       <div class="accent-beat-labels"><span>1</span><span>2</span><span>3</span><span>4</span></div>
       <div class="accent-grid" id="accentGrid"></div>
+      <div class="accent-text" id="accentText">—</div>
     </div>
   </section>
 
@@ -597,6 +602,12 @@
   const accentSection = $('accentSection'), accentLed = $('accentLed');
   const accentToggle = $('accentToggle');
 
+  function stepLabel(i) {
+    const beat = Math.floor(i / 4) + 1;
+    const sub = ['', '-e', '-&', '-a'][i % 4];
+    return beat + sub;
+  }
+
   function renderAccentGrid() {
     const grid = $('accentGrid');
     grid.innerHTML = '';
@@ -611,6 +622,9 @@
   function updateAccentGrid(positions) {
     const cells = $('accentGrid').querySelectorAll('.accent-cell');
     cells.forEach((c, i) => c.classList.toggle('lit', positions.includes(i)));
+    $('accentText').textContent = positions.length
+      ? positions.map(stepLabel).join(' · ')
+      : '—';
   }
 
   $('grooveHeader').addEventListener('click', () => $('grooveSection').classList.toggle('collapsed'));
