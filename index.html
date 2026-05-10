@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
-<title>Metro Buddy — metronome &amp; groove trainer</title>
+<title>Metro Buddy — metronome, groove &amp; tuner</title>
 <style>
   :root {
     --bg: #0e0e0e;
@@ -47,7 +47,6 @@
     padding: 6px 4px 14px; border-bottom: 1px solid var(--rule);
   }
   .logo { font-weight: 700; letter-spacing: 0.18em; font-size: 13px; }
-  .logo .slash { color: var(--accent); }
   .meta { font-size: 11px; color: var(--dim); letter-spacing: 0.16em; }
 
   .display {
@@ -157,8 +156,9 @@
     border-radius: 14px; padding: 14px; box-shadow: var(--shadow);
   }
   .section h2 {
-    margin: 0 0 12px; font-size: 11px; letter-spacing: 0.28em; color: var(--dim); font-weight: 600;
+    margin: 0; font-size: 11px; letter-spacing: 0.28em; color: var(--dim); font-weight: 600;
     display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
   }
   .section h2 .led {
     width: 8px; height: 8px; border-radius: 50%;
@@ -166,6 +166,13 @@
     transition: background .1s ease;
   }
   .section h2 .led.on { background: var(--green); box-shadow: 0 0 10px var(--green); }
+  .section h2 .led.tuner-on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .section .h2-right { display: flex; align-items: center; gap: 10px; }
+  .section .chevron { font-size: 14px; color: var(--dim); transition: transform .2s ease; }
+  .section.collapsed .chevron { transform: rotate(-90deg); }
+  .section.collapsed .section-body { display: none; }
+
+  .section-body { margin-top: 12px; }
 
   .pattern-row { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; }
   .pattern-row + .pattern-row { margin-top: 8px; }
@@ -220,10 +227,76 @@
   }
   .clear-btn:active { background: #050505; }
 
-  .footer {
-    margin-top: 20px; padding: 10px 4px;
-    font-size: 10px; letter-spacing: 0.2em; color: var(--dim);
+  /* TUNER */
+  .tuner-toggle {
+    width: 100%; padding: 12px;
+    background: linear-gradient(180deg, var(--accent), #c83f0e);
+    color: #1a0a02; border: none; border-radius: 10px;
+    font-family: inherit; font-size: 12px; letter-spacing: 0.22em; font-weight: 700;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+  }
+  .tuner-toggle[data-on="true"] {
+    background: linear-gradient(180deg, #2a2a2a, #141414); color: var(--ink);
+  }
+  .tuner-display {
+    text-align: center; padding: 8px 0 4px;
+  }
+  .tuner-note {
+    font-size: 64px; line-height: 1; font-weight: 700;
+    letter-spacing: -0.02em; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .tuner-note.in-tune { color: var(--green); text-shadow: 0 0 24px rgba(123, 224, 154, 0.4); }
+  .tuner-note.dim { color: var(--dim); }
+  .tuner-freq { font-size: 11px; color: var(--dim); letter-spacing: 0.16em; margin-top: 2px; }
+  .tuner-cents-bar {
+    margin: 14px auto 6px; max-width: 320px; height: 36px; position: relative;
+    background: #0a0a0a; border: 1px solid var(--line); border-radius: 18px;
+    overflow: hidden;
+  }
+  .tuner-cents-bar .center-mark {
+    position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+    background: var(--green); transform: translateX(-50%);
+    box-shadow: 0 0 8px var(--green);
+  }
+  .tuner-needle {
+    position: absolute; top: 4px; bottom: 4px; width: 4px;
+    background: var(--accent); border-radius: 2px;
+    left: 50%; transform: translateX(-50%);
+    transition: left 0.08s ease, background 0.15s ease;
+    box-shadow: 0 0 12px rgba(255, 91, 31, 0.5);
+  }
+  .tuner-needle.in-tune { background: var(--green); box-shadow: 0 0 12px rgba(123, 224, 154, 0.6); }
+  .tuner-cents-labels {
     display: flex; justify-content: space-between;
+    max-width: 320px; margin: 0 auto;
+    font-size: 9px; color: var(--dim); letter-spacing: 0.14em;
+    padding: 0 4px;
+  }
+  .tuner-target-row {
+    margin-top: 10px;
+    display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;
+  }
+  .tuner-target {
+    flex: 0 1 auto; padding: 6px 10px;
+    background: #0a0a0a; border: 1px solid var(--line); border-radius: 6px;
+    color: var(--ink); font-family: inherit;
+    font-size: 10px; letter-spacing: 0.16em; cursor: pointer;
+    min-width: 48px;
+  }
+  .tuner-target.active { border-color: var(--accent); color: var(--accent); }
+  .tuner-target.auto { border-style: dashed; }
+  .tuner-help {
+    margin-top: 10px; padding: 8px;
+    font-size: 10px; color: var(--dim); letter-spacing: 0.05em;
+    text-align: center; line-height: 1.5;
+  }
+  .tuner-error {
+    margin-top: 10px; padding: 10px;
+    background: #2a0a0a; border: 1px solid #4a1a1a; border-radius: 8px;
+    color: var(--accent-soft); font-size: 11px; letter-spacing: 0.05em;
+    text-align: center;
   }
 
   @keyframes flash { 0% { background: var(--accent); } 100% { background: #0a0a0a; } }
@@ -234,8 +307,8 @@
 <div class="app">
 
   <header>
-    <div class="logo">METRO<span class="slash">/</span>BUDDY</div>
-    <div class="meta">v0.3 · TRAINER</div>
+    <div class="logo">METRO BUDDY</div>
+    <div class="meta">v0.4</div>
   </header>
 
   <section class="display">
@@ -291,29 +364,70 @@
     <button class="btn" id="metroBtn" data-on="true">CLICK · ON</button>
   </div>
 
+  <!-- TUNER (collapsible, off by default) -->
+  <section class="section collapsed" id="tunerSection">
+    <h2 id="tunerHeader">
+      <span>TUNER · 5-STRING BASS</span>
+      <span class="h2-right">
+        <span class="led" id="tunerLed"></span>
+        <span class="chevron">▾</span>
+      </span>
+    </h2>
+    <div class="section-body">
+      <button class="tuner-toggle" id="tunerToggle" data-on="false">START TUNER</button>
+
+      <div id="tunerError" style="display:none;"></div>
+
+      <div class="tuner-display">
+        <div class="tuner-note dim" id="tunerNote">—</div>
+        <div class="tuner-freq" id="tunerFreq">— Hz</div>
+      </div>
+
+      <div class="tuner-cents-bar">
+        <div class="center-mark"></div>
+        <div class="tuner-needle" id="tunerNeedle"></div>
+      </div>
+      <div class="tuner-cents-labels">
+        <span>−50¢</span>
+        <span>FLAT</span>
+        <span>0</span>
+        <span>SHARP</span>
+        <span>+50¢</span>
+      </div>
+
+      <div class="tuner-target-row" id="tunerTargets"></div>
+
+      <div class="tuner-help" id="tunerHelp">
+        Tap a string to focus, or AUTO to detect any note.<br>
+        Pluck steady — let the note ring.
+      </div>
+    </div>
+  </section>
+
+  <!-- GROOVE -->
   <section class="section">
     <h2>
       <span id="grooveTitle">GROOVE · 16 STEP</span>
-      <span class="led" id="grooveLed"></span>
+      <span class="h2-right">
+        <span class="led" id="grooveLed"></span>
+      </span>
     </h2>
-
-    <div id="grooveGrid"></div>
-    <div class="count-row" id="countRow"></div>
-
-    <div class="preset-row" id="presetRow"></div>
-
-    <button class="clear-btn" id="clearTargetBtn">CLEAR TARGET TRACK</button>
+    <div class="section-body">
+      <div id="grooveGrid"></div>
+      <div class="count-row" id="countRow"></div>
+      <div class="preset-row" id="presetRow"></div>
+      <button class="clear-btn" id="clearTargetBtn">CLEAR TARGET TRACK</button>
+    </div>
   </section>
 
-  <div class="footer">
-    <span>WEB AUDIO · OFFLINE READY</span>
-    <span id="statusDot">IDLE</span>
-  </div>
 </div>
 
 <script>
 (() => {
 
+  /* ============================================================
+     METRONOME / GROOVE
+  ============================================================ */
   const meterDefs = {
     '4-4': {
       steps: 16, gridCols: 16, beatsPerBar: 4,
@@ -389,7 +503,7 @@
   const bpmNum = $('bpmNum'), bpmSlider = $('bpmSlider'), tempoMark = $('tempoMark');
   const beatsEl = $('beats'), playBtn = $('playBtn'), metroBtn = $('metroBtn');
   const grooveGrid = $('grooveGrid'), grooveLed = $('grooveLed'), grooveTitle = $('grooveTitle');
-  const statusDot = $('statusDot'), tapBtn = $('tapBtn');
+  const tapBtn = $('tapBtn');
   const halfTimeBtn = $('halfTimeBtn'), halfTimeVal = $('halfTimeVal');
   const presetRow = $('presetRow'), countRow = $('countRow');
 
@@ -527,7 +641,6 @@
     nextNoteTime = audioCtx.currentTime + 0.05;
     playBtn.textContent = 'STOP';
     playBtn.dataset.playing = 'true';
-    statusDot.textContent = 'RUN';
     grooveLed.classList.add('on');
     tick();
   }
@@ -537,7 +650,6 @@
     timerId = null;
     playBtn.textContent = 'PLAY';
     playBtn.dataset.playing = 'false';
-    statusDot.textContent = 'IDLE';
     grooveLed.classList.remove('on');
     document.querySelectorAll('.step.playhead').forEach(e => e.classList.remove('playhead'));
     document.querySelectorAll('.beat.active').forEach(e => e.classList.remove('active'));
@@ -754,7 +866,6 @@
   });
   playBtn.addEventListener('click', () => { if (state.playing) requestWakeLock(); });
 
-  // service worker registration
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js').catch(err => {
@@ -763,7 +874,240 @@
     });
   }
 
+
+  /* ============================================================
+     TUNER
+     5-string bass standard tuning: B0 (30.87Hz), E1 (41.20Hz),
+     A1 (55.00Hz), D2 (73.42Hz), G2 (98.00Hz)
+     Algorithm: autocorrelation with octave-error correction
+  ============================================================ */
+  const tunerSection = $('tunerSection'), tunerHeader = $('tunerHeader');
+  const tunerToggle = $('tunerToggle'), tunerLed = $('tunerLed');
+  const tunerNote = $('tunerNote'), tunerFreq = $('tunerFreq');
+  const tunerNeedle = $('tunerNeedle'), tunerError = $('tunerError');
+  const tunerTargets = $('tunerTargets');
+
+  // collapse/expand the tuner section by tapping its header
+  tunerHeader.addEventListener('click', () => {
+    tunerSection.classList.toggle('collapsed');
+  });
+
+  const bassStrings = [
+    { name: 'B',  octave: 0, freq: 30.87 },
+    { name: 'E',  octave: 1, freq: 41.20 },
+    { name: 'A',  octave: 1, freq: 55.00 },
+    { name: 'D',  octave: 2, freq: 73.42 },
+    { name: 'G',  octave: 2, freq: 98.00 },
+  ];
+  const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+  let tunerState = {
+    on: false,
+    targetIdx: -1,        // -1 = AUTO, otherwise index into bassStrings
+    audioCtx: null,
+    analyser: null,
+    micStream: null,
+    rafId: null,
+    buffer: null,
+  };
+
+  function buildTunerTargets() {
+    tunerTargets.innerHTML = '';
+    const auto = document.createElement('button');
+    auto.className = 'tuner-target auto active';
+    auto.dataset.idx = -1;
+    auto.textContent = 'AUTO';
+    auto.addEventListener('click', () => setTunerTarget(-1));
+    tunerTargets.appendChild(auto);
+    bassStrings.forEach((s, i) => {
+      const b = document.createElement('button');
+      b.className = 'tuner-target';
+      b.dataset.idx = i;
+      b.textContent = s.name + s.octave;
+      b.addEventListener('click', () => setTunerTarget(i));
+      tunerTargets.appendChild(b);
+    });
+  }
+  function setTunerTarget(idx) {
+    tunerState.targetIdx = idx;
+    document.querySelectorAll('.tuner-target').forEach(b => {
+      b.classList.toggle('active', +b.dataset.idx === idx);
+    });
+  }
+
+  // Frequency to note. Returns { name, octave, cents }
+  function freqToNote(freq) {
+    if (!freq || freq < 20) return null;
+    // A4 = 440 Hz, midi note 69
+    const midiFloat = 69 + 12 * Math.log2(freq / 440);
+    const midi = Math.round(midiFloat);
+    const cents = Math.round((midiFloat - midi) * 100);
+    const name = noteNames[((midi % 12) + 12) % 12];
+    const octave = Math.floor(midi / 12) - 1;
+    return { name, octave, cents, midi };
+  }
+
+  // Autocorrelation pitch detection (modified ACF2+ algorithm).
+  // Returns frequency in Hz, or -1 if no clear pitch found.
+  function autoCorrelate(buf, sampleRate) {
+    const SIZE = buf.length;
+    let rms = 0;
+    for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+    rms = Math.sqrt(rms / SIZE);
+    if (rms < 0.005) return -1; // silence/noise gate
+
+    let r1 = 0, r2 = SIZE - 1, thresh = 0.2;
+    for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thresh) { r1 = i; break; }
+    for (let i = 1; i < SIZE / 2; i++) if (Math.abs(buf[SIZE - i]) < thresh) { r2 = SIZE - i; break; }
+
+    const trimmed = buf.slice(r1, r2);
+    const NEW_SIZE = trimmed.length;
+
+    const c = new Array(NEW_SIZE).fill(0);
+    for (let i = 0; i < NEW_SIZE; i++)
+      for (let j = 0; j < NEW_SIZE - i; j++)
+        c[i] = c[i] + trimmed[j] * trimmed[j + i];
+
+    let d = 0; while (c[d] > c[d + 1]) d++;
+    let maxval = -1, maxpos = -1;
+    for (let i = d; i < NEW_SIZE; i++) {
+      if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+    }
+    let T0 = maxpos;
+    // parabolic interpolation for sub-sample accuracy
+    if (T0 > 0 && T0 < NEW_SIZE - 1) {
+      const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+      const a = (x1 + x3 - 2 * x2) / 2;
+      const b = (x3 - x1) / 2;
+      if (a) T0 = T0 - b / (2 * a);
+    }
+    return sampleRate / T0;
+  }
+
+  function updateTunerDisplay(freq) {
+    if (freq < 20) {
+      tunerNote.textContent = '—';
+      tunerNote.className = 'tuner-note dim';
+      tunerFreq.textContent = '— Hz';
+      tunerNeedle.style.left = '50%';
+      tunerNeedle.classList.remove('in-tune');
+      return;
+    }
+
+    let displayFreq = freq;
+    let cents;
+    let displayName, displayOctave;
+
+    if (tunerState.targetIdx >= 0) {
+      // locked to a specific string — compute cents relative to it,
+      // but allow octave-folded matches (handles common octave errors)
+      const target = bassStrings[tunerState.targetIdx];
+      let bestFreq = freq;
+      let bestCentsAbs = Infinity;
+      // try the freq as-is, doubled, halved
+      [freq, freq / 2, freq * 2].forEach(f => {
+        const c = 1200 * Math.log2(f / target.freq);
+        if (Math.abs(c) < bestCentsAbs) { bestCentsAbs = Math.abs(c); bestFreq = f; }
+      });
+      cents = Math.round(1200 * Math.log2(bestFreq / target.freq));
+      displayFreq = bestFreq;
+      displayName = target.name;
+      displayOctave = target.octave;
+    } else {
+      // auto mode — nearest note overall
+      const note = freqToNote(freq);
+      if (!note) return;
+      cents = note.cents;
+      displayName = note.name;
+      displayOctave = note.octave;
+    }
+
+    tunerNote.textContent = displayName + displayOctave;
+    tunerFreq.textContent = displayFreq.toFixed(1) + ' Hz · ' + (cents > 0 ? '+' : '') + cents + '¢';
+
+    // needle position: clamp ±50¢
+    const clamped = Math.max(-50, Math.min(50, cents));
+    const pct = 50 + clamped; // 0..100
+    tunerNeedle.style.left = pct + '%';
+
+    const inTune = Math.abs(cents) <= 5;
+    tunerNote.classList.toggle('in-tune', inTune);
+    tunerNote.classList.remove('dim');
+    tunerNeedle.classList.toggle('in-tune', inTune);
+  }
+
+  async function startTuner() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        }
+      });
+      ensureAudio();
+      tunerState.micStream = stream;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 4096;  // larger window for low-freq accuracy
+      // low-pass filter to clean up high-frequency noise above bass range
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 1200;
+      lp.Q.value = 0.7;
+      source.connect(lp);
+      lp.connect(analyser);
+      tunerState.analyser = analyser;
+      tunerState.buffer = new Float32Array(analyser.fftSize);
+
+      tunerState.on = true;
+      tunerToggle.textContent = 'STOP TUNER';
+      tunerToggle.dataset.on = 'true';
+      tunerLed.classList.add('tuner-on');
+      tunerError.style.display = 'none';
+
+      const loop = () => {
+        if (!tunerState.on) return;
+        tunerState.analyser.getFloatTimeDomainData(tunerState.buffer);
+        const freq = autoCorrelate(tunerState.buffer, audioCtx.sampleRate);
+        updateTunerDisplay(freq);
+        tunerState.rafId = requestAnimationFrame(loop);
+      };
+      loop();
+    } catch (err) {
+      tunerError.style.display = 'block';
+      tunerError.className = 'tuner-error';
+      tunerError.textContent = 'Mic access denied or unavailable. Check permissions.';
+      console.warn('Tuner error:', err);
+    }
+  }
+  function stopTuner() {
+    tunerState.on = false;
+    if (tunerState.rafId) cancelAnimationFrame(tunerState.rafId);
+    if (tunerState.micStream) {
+      tunerState.micStream.getTracks().forEach(t => t.stop());
+      tunerState.micStream = null;
+    }
+    tunerToggle.textContent = 'START TUNER';
+    tunerToggle.dataset.on = 'false';
+    tunerLed.classList.remove('tuner-on');
+    tunerNote.textContent = '—';
+    tunerNote.className = 'tuner-note dim';
+    tunerFreq.textContent = '— Hz';
+    tunerNeedle.style.left = '50%';
+    tunerNeedle.classList.remove('in-tune');
+  }
+  tunerToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    tunerState.on ? stopTuner() : startTuner();
+  });
+  // prevent target-button taps from bubbling to header (which collapses)
+  tunerTargets.addEventListener('click', e => e.stopPropagation());
+
+  buildTunerTargets();
+
 })();
 </script>
 </body>
 </html>
+  
