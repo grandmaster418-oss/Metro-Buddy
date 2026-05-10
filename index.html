@@ -310,6 +310,16 @@
     text-align: center;
   }
 
+  .accent-display {
+    margin-top: 10px; padding: 8px;
+    font-size: 10px; color: var(--dim); letter-spacing: 0.1em;
+    text-align: center; line-height: 1.6;
+  }
+  #accentToggle[data-on="true"] {
+    background: linear-gradient(180deg, var(--accent), #c83f0e);
+    color: #1a0a02; border-color: #2a0d00;
+  }
+
   @keyframes flash { 0% { background: var(--accent); } 100% { background: #0a0a0a; } }
   .toggle-pill.flash { animation: flash .25s ease-out; }
 </style>
@@ -319,7 +329,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v0.5</div>
+    <div class="meta">v0.6</div>
   </header>
 
   <section class="display">
@@ -380,6 +390,46 @@
     <button class="btn primary" id="playBtn" data-playing="false">PLAY</button>
     <button class="btn" id="metroBtn" data-on="true">CLICK · ON</button>
   </div>
+
+  <!-- RANDOM ACCENT -->
+  <section class="section collapsed" id="accentSection">
+    <h2 id="accentHeader">
+      <span>RANDOM ACCENT · 4/4</span>
+      <span class="h2-right">
+        <span class="led" id="accentLed"></span>
+        <span class="chevron">▾</span>
+      </span>
+    </h2>
+    <div class="section-body">
+      <div class="ctrl-grid">
+        <div class="pill">
+          <span class="k">GRID</span>
+          <div class="seg" id="accentGridSeg">
+            <button data-grid="8th" class="active">8TH</button>
+            <button data-grid="16th">16TH</button>
+          </div>
+        </div>
+        <div class="pill">
+          <span class="k">DENSITY</span>
+          <div class="seg" id="accentDensitySeg">
+            <button data-density="1">1</button>
+            <button data-density="2" class="active">2</button>
+            <button data-density="3">3</button>
+          </div>
+        </div>
+      </div>
+      <div class="pill" style="margin-top:10px;">
+        <span class="k">CHANGE EVERY</span>
+        <div class="seg" id="accentRateSeg">
+          <button data-rate="1" class="active">1 BAR</button>
+          <button data-rate="2">2 BARS</button>
+          <button data-rate="4">4 BARS</button>
+        </div>
+      </div>
+      <button class="btn" id="accentToggle" style="margin-top:12px; height:48px;" data-on="false">ACCENT · OFF</button>
+      <div class="accent-display" id="accentDisplay">— play to start —</div>
+    </div>
+  </section>
 
   <!-- TUNER (collapsible, off by default) -->
   <section class="section collapsed" id="tunerSection">
@@ -515,6 +565,7 @@
     pattern: { kick: [], snare: [], hat: [], target: [] },
     activePreset: 'off',
     levels: { kick: 1.0, snare: 1.0, hat: 1.0, target: 1.0 },
+    accent: { on: false, density: 2, rate: 1, grid: '8th', positions: [], barCount: 0 },
   };
 
   const $ = id => document.getElementById(id);
@@ -530,6 +581,37 @@
     if (masterGain) masterGain.gain.value = v;
     masterVolPct.textContent = masterVolEl.value + '%';
   });
+
+  const accentSection = $('accentSection'), accentLed = $('accentLed');
+  const accentToggle = $('accentToggle'), accentDisplayEl = $('accentDisplay');
+
+  $('accentHeader').addEventListener('click', () => accentSection.classList.toggle('collapsed'));
+
+  accentToggle.addEventListener('click', () => {
+    state.accent.on = !state.accent.on;
+    accentToggle.textContent = 'ACCENT · ' + (state.accent.on ? 'ON' : 'OFF');
+    accentToggle.dataset.on = state.accent.on;
+    accentLed.classList.toggle('on', state.accent.on);
+    if (!state.accent.on) {
+      state.accent.positions = [];
+      state.accent.barCount = 0;
+      accentDisplayEl.textContent = '— play to start —';
+    }
+  });
+
+  function accentSegHandler(segId, key, parse) {
+    $(segId).addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      document.querySelectorAll('#' + segId + ' button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      state.accent[key] = parse(b.dataset[key]);
+      state.accent.positions = [];
+      state.accent.barCount = 0;
+    });
+  }
+  accentSegHandler('accentGridSeg',    'grid',    v => v);
+  accentSegHandler('accentDensitySeg', 'density', v => +v);
+  accentSegHandler('accentRateSeg',    'rate',    v => +v);
 
   let audioCtx = null, masterGain = null;
   function ensureAudio() {
@@ -624,6 +706,27 @@
     noise.start(time); noise.stop(time + 0.06);
   }
 
+  function playAccent(time) {
+    const ctx = audioCtx;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1800, time);
+    osc.frequency.exponentialRampToValueAtTime(1200, time + 0.04);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.65, time + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.07);
+    osc.connect(gain).connect(masterGain);
+    osc.start(time); osc.stop(time + 0.08);
+  }
+
+  function randomizeAccents() {
+    const pool = state.accent.grid === '8th'
+      ? [0, 2, 4, 6, 8, 10, 12, 14]
+      : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    state.accent.positions = shuffled.slice(0, state.accent.density).sort((a, b) => a - b);
+  }
+
   let currentStep = 0, nextNoteTime = 0, timerId = null;
   const lookahead = 25.0, scheduleAhead = 0.1;
 
@@ -648,6 +751,22 @@
     if (state.pattern.kick[stepIndex])   playKick(time, state.levels.kick);
     if (state.pattern.snare[stepIndex])  playSnare(time, state.levels.snare);
     if (state.pattern.hat[stepIndex])    playHat(time, state.levels.hat);
+
+    if (state.accent.on && state.meter === '4-4') {
+      if (stepIndex === 0) {
+        const lastPos = state.accent.positions.slice();
+        const uiAt = (time - audioCtx.currentTime) * 1000;
+        setTimeout(() => {
+          if (lastPos.length) {
+            const labels = meterDefs['4-4'].countLabels;
+            accentDisplayEl.textContent = 'LAST BAR: ' + lastPos.map(i => labels[i]).join(' · ');
+          }
+        }, Math.max(0, uiAt));
+        if (state.accent.barCount % state.accent.rate === 0) randomizeAccents();
+        state.accent.barCount++;
+      }
+      if (state.accent.positions.includes(stepIndex)) playAccent(time);
+    }
 
     const uiAt = (time - audioCtx.currentTime) * 1000;
     setTimeout(() => updatePlayheadUI(stepIndex), Math.max(0, uiAt));
@@ -682,6 +801,9 @@
     grooveLed.classList.remove('on');
     document.querySelectorAll('.step.playhead').forEach(e => e.classList.remove('playhead'));
     document.querySelectorAll('.beat.active').forEach(e => e.classList.remove('active'));
+    state.accent.positions = [];
+    state.accent.barCount = 0;
+    if (accentDisplayEl) accentDisplayEl.textContent = '— play to start —';
   }
 
   function setBPM(v) {
