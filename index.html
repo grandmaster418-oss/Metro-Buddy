@@ -311,14 +311,13 @@
     text-align: center;
   }
 
-  .accent-beat-labels {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    margin-top: 10px; margin-bottom: 3px;
-    font-size: 9px; color: var(--dim); letter-spacing: 0.14em; text-align: center;
-  }
-  .accent-beat-labels span:first-child { color: var(--target); }
   .accent-grid {
     display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px;
+    margin-top: 10px;
+  }
+  .accent-count-row {
+    display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px;
+    margin-top: 3px;
   }
   .accent-cell {
     height: 18px; background: #0a0a0a;
@@ -349,7 +348,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v1.2</div>
+    <div class="meta">v1.3</div>
   </header>
 
   <section class="display">
@@ -442,8 +441,8 @@
         <button class="btn" id="accentToggle" data-on="false">ACCENT · OFF</button>
         <button class="btn" id="accentNewBtn" disabled>NEW</button>
       </div>
-      <div class="accent-beat-labels"><span>1</span><span>2</span><span>3</span><span>4</span></div>
       <div class="accent-grid" id="accentGrid"></div>
+      <div class="accent-count-row" id="accentCountRow"></div>
       <div class="accent-text" id="accentText">—</div>
     </div>
   </section>
@@ -607,6 +606,21 @@
     const beat = Math.floor(i / 4) + 1;
     const sub = ['', '-e', '-&', '-a'][i % 4];
     return beat + sub;
+  }
+
+  function renderAccentCountRow() {
+    const labels = ['1','e','&','a','2','e','&','a','3','e','&','a','4','e','&','a'];
+    const beatStarts = [0, 4, 8, 12];
+    const row = $('accentCountRow');
+    row.innerHTML = '';
+    labels.forEach((label, i) => {
+      const c = document.createElement('div');
+      c.className = 'count';
+      if (beatStarts.includes(i)) c.classList.add('beat');
+      if (i === 0) c.classList.add('beat-one');
+      c.textContent = label;
+      row.appendChild(c);
+    });
   }
 
   function renderAccentGrid() {
@@ -1060,6 +1074,7 @@
   renderBeatIndicator();
   renderCountRow();
   renderAccentGrid();
+  renderAccentCountRow();
   state.pattern = { kick: [], snare: [], hat: [], target: [] };
   applyPreset('off');
 
