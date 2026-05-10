@@ -199,9 +199,10 @@
   .step:active { transform: scale(0.9); }
 
   .count-row {
-    display: grid; gap: 4px; margin-top: 6px;
-    margin-left: 66px;
+    display: grid; grid-template-columns: 56px 1fr;
+    gap: 10px; margin-top: 6px;
   }
+  .count-inner { display: grid; gap: 4px; }
   .count {
     font-size: 9px; letter-spacing: 0.06em; color: var(--dim);
     text-align: center; font-variant-numeric: tabular-nums;
@@ -348,7 +349,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v1.1</div>
+    <div class="meta">v1.2</div>
   </header>
 
   <section class="display">
@@ -901,15 +902,19 @@
   function renderCountRow() {
     const m = meterDefs[state.meter];
     countRow.innerHTML = '';
-    countRow.style.gridTemplateColumns = `repeat(${m.gridCols}, 1fr)`;
+    countRow.appendChild(document.createElement('div')); // spacer matches track-name column
+    const inner = document.createElement('div');
+    inner.className = 'count-inner';
+    inner.style.gridTemplateColumns = `repeat(${m.gridCols}, 1fr)`;
     m.countLabels.forEach((label, i) => {
       const c = document.createElement('div');
       c.className = 'count';
       if (m.beatStarts.includes(i)) c.classList.add('beat');
       if (i === 0) c.classList.add('beat-one');
       c.textContent = label;
-      countRow.appendChild(c);
+      inner.appendChild(c);
     });
+    countRow.appendChild(inner);
   }
 
   const tracks = [
