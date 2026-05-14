@@ -440,7 +440,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v1.6</div>
+    <div class="meta">v1.7</div>
   </header>
 
   <section class="display">
@@ -599,7 +599,7 @@
   <!-- EAR TRAINING -->
   <section class="section collapsed" id="earSection">
     <h2 id="earHeader">
-      <span>EAR TRAINING · INTERVALS</span>
+      <span>EAR TRAINING · SCALE DEGREES</span>
       <span class="h2-right"><span class="chevron">▾</span></span>
     </h2>
     <div class="section-body">
@@ -1547,25 +1547,31 @@
   buildTunerTargets();
 
   /* ============================================================
-     EAR TRAINING — INTERVALS (major key bass)
+     EAR TRAINING — SCALE DEGREES (major key bass)
   ============================================================ */
   const intervals = [
-    { name: 'ROOT',   semitones: 0  },
-    { name: 'MAJ 2',  semitones: 2  },
-    { name: 'MAJ 3',  semitones: 4  },
-    { name: 'PERF 4', semitones: 5  },
-    { name: 'PERF 5', semitones: 7  },
-    { name: 'MAJ 6',  semitones: 9  },
-    { name: 'DOM 7',  semitones: 10 },
+    { name: '1 · ROOT', semitones: 0  },
+    { name: '2',        semitones: 2  },
+    { name: '3',        semitones: 4  },
+    { name: '4',        semitones: 5  },
+    { name: '5',        semitones: 7  },
+    { name: '6',        semitones: 9  },
+    { name: 'b7',       semitones: 10 },
   ];
+  // Roots in A2–A3 range — audible on phone speakers
   const earRoots = [
-    { name: 'E1',  freq: 41.20 }, { name: 'F1',  freq: 43.65 },
-    { name: 'G1',  freq: 49.00 }, { name: 'A1',  freq: 55.00 },
-    { name: 'B1',  freq: 61.74 }, { name: 'C2',  freq: 65.41 },
-    { name: 'D2',  freq: 73.42 }, { name: 'E2',  freq: 82.41 },
+    { name: 'A',  freq: 110.00 }, { name: 'Bb', freq: 116.54 },
+    { name: 'B',  freq: 123.47 }, { name: 'C',  freq: 130.81 },
+    { name: 'D',  freq: 146.83 }, { name: 'E',  freq: 164.81 },
+    { name: 'F',  freq: 174.61 }, { name: 'G',  freq: 196.00 },
   ];
 
   const earState = { score: 0, total: 0, current: null, root: null, direction: 'asc', answered: false };
+
+  async function resumeAudio() {
+    ensureAudio();
+    if (audioCtx.state !== 'running') await audioCtx.resume();
+  }
 
   function playBassNote(freq, startTime, dur) {
     ensureAudio();
@@ -1588,8 +1594,7 @@
   }
 
   function playCurrentInterval() {
-    ensureAudio();
-    const now = audioCtx.currentTime + 0.05;
+    const now = audioCtx.currentTime + 0.1;
     const rf = earState.root.freq;
     const ivf = rf * Math.pow(2, earState.current.semitones / 12);
     let a = rf, b = ivf;
@@ -1603,8 +1608,8 @@
     earState.root = earRoots[Math.floor(Math.random() * earRoots.length)];
     earState.current = intervals[Math.floor(Math.random() * intervals.length)];
     earState.answered = false;
-    $('earRoot').textContent = earState.root.name;
-    $('earStatus').textContent = '?';
+    $('earRoot').textContent = 'ROOT · ' + earState.root.name;
+    $('earStatus').textContent = 'WHICH DEGREE?';
     $('earStatus').className = 'ear-status';
     document.querySelectorAll('.ear-answer').forEach(b => {
       b.classList.remove('correct', 'wrong'); b.disabled = false;
@@ -1635,7 +1640,7 @@
   }
 
   $('earHeader').addEventListener('click', () => $('earSection').classList.toggle('collapsed'));
-  $('earPlayBtn').addEventListener('click', () => { ensureAudio(); playCurrentInterval(); });
+  $('earPlayBtn').addEventListener('click', async () => { await resumeAudio(); playCurrentInterval(); });
   $('earSkipBtn').addEventListener('click', () => { earState.total++; $('earScore').textContent = earState.score + ' / ' + earState.total; newEarQuestion(); });
   $('earDirSeg').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -1719,8 +1724,8 @@
   }
 
   $('rhythmHeader').addEventListener('click', () => $('rhythmSection').classList.toggle('collapsed'));
-  $('rhythmPlayBtn').addEventListener('click', () => { ensureAudio(); playRhythmPattern(rhythmState.current); $('rhythmStatus').textContent = 'LISTENING...'; });
-  $('rhythmReplayBtn').addEventListener('click', () => { ensureAudio(); playRhythmPattern(rhythmState.current); });
+  $('rhythmPlayBtn').addEventListener('click', async () => { await resumeAudio(); playRhythmPattern(rhythmState.current); $('rhythmStatus').textContent = 'LISTENING...'; });
+  $('rhythmReplayBtn').addEventListener('click', async () => { await resumeAudio(); playRhythmPattern(rhythmState.current); });
   newRhythmQuestion();
 
   /* ============================================================
