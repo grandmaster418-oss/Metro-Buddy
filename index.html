@@ -452,6 +452,39 @@
   .form-actions { display: flex; gap: 8px; margin-top: 12px; }
   .form-actions .btn { height: 44px; font-size: 11px; }
 
+  /* TAP TIMING RECORDER */
+  .tap-overlay {
+    position: fixed; inset: 0; z-index: 350; background: #050505;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: space-between; padding: 32px 20px 36px;
+  }
+  .tap-title { font-size: 11px; letter-spacing: 0.24em; color: var(--dim); }
+  .tap-section-list { width: 100%; max-width: 320px; }
+  .tap-section-item {
+    padding: 9px 14px; font-size: 13px; letter-spacing: 0.14em;
+    color: var(--dim); border-radius: 8px; margin-bottom: 5px;
+    border: 1px solid transparent;
+  }
+  .tap-section-item.current {
+    background: #1a1a08; color: var(--target);
+    border-color: var(--target); font-weight: 700;
+  }
+  .tap-section-item.done { color: var(--green); }
+  .tap-progress {
+    font-size: 13px; letter-spacing: 0.14em; color: var(--ink);
+    text-align: center; min-height: 20px;
+  }
+  .tap-btn {
+    width: 170px; height: 170px; border-radius: 50%;
+    background: linear-gradient(180deg, var(--accent), #c83f0e);
+    border: none; color: #1a0a02; font-family: inherit;
+    font-size: 16px; font-weight: 700; letter-spacing: 0.2em;
+    cursor: pointer; box-shadow: 0 0 50px rgba(255,91,31,0.25);
+    transition: transform 0.06s ease, box-shadow 0.06s ease;
+  }
+  .tap-btn:active { transform: scale(0.93); box-shadow: 0 0 20px rgba(255,91,31,0.4); }
+  .tap-btn.flashed { background: linear-gradient(180deg, #fff, #ddd); color: #000; }
+
   /* GIG MODE */
   .gig-overlay {
     position: fixed; inset: 0; z-index: 300; background: #050505;
@@ -565,7 +598,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v2.4</div>
+    <div class="meta">v2.5</div>
   </header>
 
   <section class="display">
@@ -844,6 +877,7 @@
           </div>
           <div id="sectionRows"></div>
           <button class="add-section-btn" id="addSectionRowBtn">+ ADD SECTION</button>
+          <button class="add-section-btn" id="recordTimingBtn" style="margin-top:5px;border-color:var(--accent);color:var(--accent);">⏺ RECORD TIMING</button>
         </div>
         <div class="form-field" style="margin-top:10px;">
           <label class="form-label">PRACTICE NOTES</label>
@@ -857,6 +891,15 @@
       <div id="songList"></div>
     </div>
   </section>
+
+  <!-- TAP TIMING OVERLAY -->
+  <div class="tap-overlay" id="tapTimingOverlay" style="display:none;">
+    <div class="tap-title">⏺ TAP TIMING RECORDER</div>
+    <div class="tap-section-list" id="tapSectionList"></div>
+    <div class="tap-progress" id="tapProgress">—</div>
+    <button class="tap-btn" id="tapTimingBtn">TAP</button>
+    <button class="btn" style="width:100%;max-width:320px;" id="tapCancelBtn">CANCEL</button>
+  </div>
 
   <!-- GIG MODE OVERLAY -->
   <div class="gig-overlay" id="gigOverlay" style="display:none;">
@@ -2303,6 +2346,68 @@
   $('setlistAddBtn').addEventListener('click', () => openSongForm(null));
   $('formCancelBtn').addEventListener('click', closeSongForm);
   $('addSectionRowBtn').addEventListener('click', () => $('sectionRows').appendChild(makeSectionRow(null)));
+
+  /* ============================================================
+     TAP TIMING RECORDER
+  ============================================================ */
+  const tapState = { sections: [], timestamps: [] };
+
+  function startTimingRecord() {
+    const rows = $('sectionRows').querySelectorAll('.section-row');
+    if (!rows.length) return;
+    tapState.sections = [...rows].map(r => r.querySelector('select').value);
+    tapState.timestamps = [];
+    const list = $('tapSectionList'); list.innerHTML = '';
+    tapState.sections.forEach((type, i) => {
+      const d = document.createElement('div');
+      d.className = 'tap-section-item' + (i === 0 ? ' current' : '');
+      d.textContent = type.toUpperCase();
+      list.appendChild(d);
+    });
+    $('tapProgress').textContent = 'TAP WHEN ' + tapState.sections[0].toUpperCase() + ' STARTS';
+    $('tapTimingBtn').textContent = 'TAP';
+    $('tapTimingOverlay').style.display = 'flex';
+  }
+
+  function handleTimingTap() {
+    tapState.timestamps.push(performance.now());
+    const count = tapState.timestamps.length;
+    const N = tapState.sections.length;
+    const items = $('tapSectionList').querySelectorAll('.tap-section-item');
+
+    // flash feedback
+    const btn = $('tapTimingBtn');
+    btn.classList.add('flashed');
+    setTimeout(() => btn.classList.remove('flashed'), 120);
+
+    if (count <= N) {
+      items[count - 1].className = 'tap-section-item done';
+      if (count < N) {
+        items[count].className = 'tap-section-item current';
+        $('tapProgress').textContent = 'TAP WHEN ' + tapState.sections[count].toUpperCase() + ' STARTS';
+      } else {
+        $('tapProgress').textContent = 'TAP WHEN SONG ENDS';
+        btn.textContent = 'END';
+      }
+    } else {
+      // Final tap — calculate and apply
+      const rows = $('sectionRows').querySelectorAll('.section-row');
+      rows.forEach((row, i) => {
+        const input = row.querySelector('input[type="number"]');
+        if (input && tapState.timestamps[i + 1]) {
+          input.value = Math.max(1, Math.round((tapState.timestamps[i + 1] - tapState.timestamps[i]) / 1000));
+        }
+      });
+      $('tapTimingOverlay').style.display = 'none';
+    }
+  }
+
+  $('recordTimingBtn').addEventListener('click', () => {
+    if ($('sectionRows').querySelectorAll('.section-row').length === 0) return;
+    startTimingRecord();
+  });
+  $('tapTimingBtn').addEventListener('click', handleTimingTap);
+  $('tapCancelBtn').addEventListener('click', () => { $('tapTimingOverlay').style.display = 'none'; });
   $('formSaveBtn').addEventListener('click', () => {
     const title = $('formTitle').value.trim(); if (!title) { $('formTitle').focus(); return; }
     const sections = [];
