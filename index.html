@@ -389,7 +389,11 @@
     background: transparent; border: 1px dashed var(--line); border-radius: 8px;
     color: var(--dim); font-family: inherit; font-size: 10px; letter-spacing: 0.2em; cursor: pointer;
   }
-  .song-card { background: #0a0a0a; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+  .song-card { background: #0a0a0a; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; }
+  .song-card.dragging { opacity: 0.4; transform: scale(0.98); }
+  .drag-handle { color: var(--dim); font-size: 15px; cursor: grab; touch-action: none; padding-top: 1px; flex-shrink: 0; user-select: none; letter-spacing: -2px; }
+  .drag-handle:active { cursor: grabbing; color: var(--ink); }
+  .song-card-content { flex: 1; min-width: 0; }
   .song-title { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; }
   .song-meta  { font-size: 10px; color: var(--dim); letter-spacing: 0.14em; margin-top: 3px; }
   .song-structure { font-size: 9px; color: var(--accent-soft); letter-spacing: 0.06em; margin-top: 6px; display: none; line-height: 1.6; }
@@ -456,7 +460,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v1.8</div>
+    <div class="meta">v1.9</div>
   </header>
 
   <section class="display">
@@ -1771,6 +1775,38 @@
 
   function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+  function initSortable(listEl) {
+    let dragging = null;
+    listEl.addEventListener('pointerdown', e => {
+      if (!e.target.closest('.drag-handle')) return;
+      e.preventDefault();
+      dragging = e.target.closest('.song-card');
+      dragging.classList.add('dragging');
+      e.target.closest('.drag-handle').setPointerCapture(e.pointerId);
+    });
+    listEl.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      const target = under?.closest('.song-card');
+      if (target && target !== dragging && listEl.contains(target)) {
+        const cards = [...listEl.querySelectorAll('.song-card')];
+        if (cards.indexOf(dragging) < cards.indexOf(target)) target.after(dragging);
+        else target.before(dragging);
+      }
+    });
+    const drop = () => {
+      if (!dragging) return;
+      dragging.classList.remove('dragging');
+      const newOrder = [...listEl.querySelectorAll('.song-card')].map(c => +c.dataset.songId);
+      const songs = loadSongs();
+      saveSongs(newOrder.map(id => songs.find(s => s.id === id)).filter(Boolean));
+      dragging = null;
+      renderSongList();
+    };
+    listEl.addEventListener('pointerup', drop);
+    listEl.addEventListener('pointercancel', () => { if (dragging) { dragging.classList.remove('dragging'); dragging = null; renderSongList(); } });
+  }
+
   function renderSongList() {
     const songs = loadSongs();
     const el = $('songList'); el.innerHTML = '';
@@ -1779,19 +1815,23 @@
     songs.forEach(song => {
       const card = document.createElement('div');
       card.className = 'song-card';
+      card.dataset.songId = song.id;
       const struct = song.sections.map(s => {
         const inOut = (s.bassIn > 1 || s.bassOut < s.bars) ? ' [in:' + s.bassIn + ' out:' + s.bassOut + ']' : '';
         return s.type + '(' + s.bars + ')' + inOut;
       }).join(' → ');
       card.innerHTML =
-        '<div class="song-title">' + esc(song.title) + '</div>' +
-        '<div class="song-meta">' + esc(song.key) + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/') + '</div>' +
-        '<div class="song-structure">' + esc(struct) + '</div>' +
-        (song.notes ? '<div class="song-notes">' + esc(song.notes) + '</div>' : '') +
-        '<div class="song-actions">' +
-          '<button class="song-action load">LOAD</button>' +
-          '<button class="song-action edit">EDIT</button>' +
-          '<button class="song-action delete">DELETE</button>' +
+        '<div class="drag-handle">⠿</div>' +
+        '<div class="song-card-content">' +
+          '<div class="song-title">' + esc(song.title) + '</div>' +
+          '<div class="song-meta">' + esc(song.key) + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/') + '</div>' +
+          '<div class="song-structure">' + esc(struct) + '</div>' +
+          (song.notes ? '<div class="song-notes">' + esc(song.notes) + '</div>' : '') +
+          '<div class="song-actions">' +
+            '<button class="song-action load">LOAD</button>' +
+            '<button class="song-action edit">EDIT</button>' +
+            '<button class="song-action delete">DELETE</button>' +
+          '</div>' +
         '</div>';
       card.querySelector('.song-title').addEventListener('click', () => card.classList.toggle('expanded'));
       card.querySelector('.load').addEventListener('click', e => {
@@ -1804,6 +1844,7 @@
       card.querySelector('.delete').addEventListener('click', e => { e.stopPropagation(); saveSongs(loadSongs().filter(s => s.id !== song.id)); renderSongList(); });
       el.appendChild(card);
     });
+    initSortable(el);
   }
 
   function makeSectionRow(sec) {
