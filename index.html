@@ -433,7 +433,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v1.4</div>
+    <div class="meta">v1.5</div>
   </header>
 
   <section class="display">
@@ -485,8 +485,8 @@
 
     <div class="vol-row">
       <span class="label-sm">VOL</span>
-      <input type="range" id="masterVol" min="0" max="100" value="80" />
-      <span class="label-sm" id="masterVolPct">80%</span>
+      <input type="range" id="masterVol" min="0" max="150" value="100" />
+      <span class="label-sm" id="masterVolPct">100%</span>
     </div>
   </section>
 
@@ -785,6 +785,8 @@
     if (masterGain) masterGain.gain.value = v;
     masterVolPct.textContent = masterVolEl.value + '%';
   });
+  // init gain to match default slider value
+  masterVolEl.dispatchEvent(new Event('input'));
 
   const accentSection = $('accentSection'), accentLed = $('accentLed');
   const accentToggle = $('accentToggle');
@@ -868,7 +870,7 @@
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint:'interactive' });
       masterGain = audioCtx.createGain();
-      masterGain.gain.value = 0.8;
+      masterGain.gain.value = 1.0;
       masterGain.connect(audioCtx.destination);
     }
     if (audioCtx.state === 'suspended') audioCtx.resume();
