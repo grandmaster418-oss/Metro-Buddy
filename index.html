@@ -433,6 +433,22 @@
   }
   .form-actions { display: flex; gap: 8px; margin-top: 12px; }
   .form-actions .btn { height: 44px; font-size: 11px; }
+
+  /* NOTES */
+  .notes-pad {
+    width: 100%; min-height: 140px; padding: 10px 12px;
+    background: #0a0a0a; border: 1px solid var(--line); border-radius: 8px;
+    color: var(--ink); font-family: inherit; font-size: 12px;
+    letter-spacing: 0.04em; line-height: 1.7; resize: vertical;
+    -webkit-appearance: none; appearance: none;
+  }
+  .notes-pad:focus { outline: none; border-color: var(--accent); }
+  .song-notes {
+    font-size: 10px; color: var(--dim); margin-top: 8px;
+    display: none; line-height: 1.6; white-space: pre-wrap;
+    border-top: 1px solid var(--line); padding-top: 8px;
+  }
+  .song-card.expanded .song-notes { display: block; }
 </style>
 </head>
 <body>
@@ -440,7 +456,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v1.7</div>
+    <div class="meta">v1.8</div>
   </header>
 
   <section class="display">
@@ -692,12 +708,27 @@
           <div id="sectionRows"></div>
           <button class="add-section-btn" id="addSectionRowBtn">+ ADD SECTION</button>
         </div>
+        <div class="form-field" style="margin-top:10px;">
+          <label class="form-label">PRACTICE NOTES</label>
+          <textarea class="form-input" id="formNotes" placeholder="Chord tones, trouble spots, feel notes..." style="min-height:80px;resize:vertical;line-height:1.6;"></textarea>
+        </div>
         <div class="form-actions">
           <button class="btn primary form-save" id="formSaveBtn">SAVE</button>
           <button class="btn form-cancel" id="formCancelBtn">CANCEL</button>
         </div>
       </div>
       <div id="songList"></div>
+    </div>
+  </section>
+
+  <!-- NOTES -->
+  <section class="section collapsed" id="notesSection">
+    <h2 id="notesHeader">
+      <span>NOTES</span>
+      <span class="h2-right"><span class="chevron">▾</span></span>
+    </h2>
+    <div class="section-body">
+      <textarea class="notes-pad" id="notesPad" placeholder="Practice notes, reminders, things to work on..."></textarea>
     </div>
   </section>
 
@@ -1738,6 +1769,8 @@
   function loadSongs() { try { return JSON.parse(localStorage.getItem(SETLIST_KEY) || '[]'); } catch { return []; } }
   function saveSongs(s) { localStorage.setItem(SETLIST_KEY, JSON.stringify(s)); }
 
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
   function renderSongList() {
     const songs = loadSongs();
     const el = $('songList'); el.innerHTML = '';
@@ -1751,9 +1784,10 @@
         return s.type + '(' + s.bars + ')' + inOut;
       }).join(' → ');
       card.innerHTML =
-        '<div class="song-title">' + song.title + '</div>' +
-        '<div class="song-meta">' + song.key + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/') + '</div>' +
-        '<div class="song-structure">' + struct + '</div>' +
+        '<div class="song-title">' + esc(song.title) + '</div>' +
+        '<div class="song-meta">' + esc(song.key) + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/') + '</div>' +
+        '<div class="song-structure">' + esc(struct) + '</div>' +
+        (song.notes ? '<div class="song-notes">' + esc(song.notes) + '</div>' : '') +
         '<div class="song-actions">' +
           '<button class="song-action load">LOAD</button>' +
           '<button class="song-action edit">EDIT</button>' +
@@ -1790,6 +1824,7 @@
     $('formKey').value = song ? song.key : '';
     $('formBpm').value = song ? song.bpm : state.bpm;
     $('formMeter').value = song ? song.timeSig : state.meter;
+    $('formNotes').value = song ? (song.notes || '') : '';
     const rows = $('sectionRows'); rows.innerHTML = '';
     (song && song.sections.length ? song.sections : [null]).forEach(s => rows.appendChild(makeSectionRow(s)));
     $('songForm').classList.add('visible');
@@ -1811,12 +1846,21 @@
       sections.push({ type: inputs[0].value, bars, bassIn: +inputs[2].value || 1, bassOut: +inputs[3].value || bars });
     });
     const songs = loadSongs();
-    const entry = { id: editingId || Date.now(), title, key: $('formKey').value.trim() || '?', bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, sections };
+    const entry = { id: editingId || Date.now(), title, key: $('formKey').value.trim() || '?', bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, sections, notes: $('formNotes').value.trim() };
     const idx = songs.findIndex(s => s.id === editingId);
     if (idx >= 0) songs[idx] = entry; else songs.push(entry);
     saveSongs(songs); closeSongForm(); renderSongList();
   });
   renderSongList();
+
+  /* ============================================================
+     MEMO PAD
+  ============================================================ */
+  const NOTES_KEY = 'metro-buddy-notes';
+  const notesPad = $('notesPad');
+  notesPad.value = localStorage.getItem(NOTES_KEY) || '';
+  notesPad.addEventListener('input', () => localStorage.setItem(NOTES_KEY, notesPad.value));
+  $('notesHeader').addEventListener('click', () => $('notesSection').classList.toggle('collapsed'));
 
 })();
 </script>
