@@ -1767,7 +1767,7 @@
      SETLIST
   ============================================================ */
   const SETLIST_KEY = 'metro-buddy-setlist';
-  const SEC_TYPES = ['I','V','Pre','C','B','Br','O','Solo'];
+  const SEC_TYPES = ['Intro','V','Pre','C','B','Br','O','Solo'];
   let editingId = null;
 
   function loadSongs() { try { return JSON.parse(localStorage.getItem(SETLIST_KEY) || '[]'); } catch { return []; } }
