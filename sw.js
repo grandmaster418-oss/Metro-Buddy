@@ -1,7 +1,7 @@
 /* Metro Buddy — service worker
    Cache-first with version-busting. Bump CACHE_VERSION to force refresh. */
 
-const CACHE_VERSION = ‘metro-buddy-v1.9’;
+const CACHE_VERSION = ‘metro-buddy-v2.0’;
 const ASSETS = [
   ‘./‘,
   ‘./index.html’,

@@ -406,6 +406,41 @@
     font-size: 9px; letter-spacing: 0.14em; cursor: pointer; text-align: center;
   }
   .song-action.load   { border-color: var(--accent); color: var(--accent); }
+
+  .sort-row { display: flex; gap: 5px; margin-bottom: 10px; }
+  .sort-btn {
+    flex: 1; padding: 7px 4px; background: transparent; border: 1px solid var(--line);
+    border-radius: 6px; color: var(--dim); font-family: inherit;
+    font-size: 9px; letter-spacing: 0.12em; cursor: pointer; text-align: center;
+  }
+  .sort-btn:active { background: #050505; }
+  .sort-btn.active { border-color: var(--accent); color: var(--accent); }
+
+  .session-panel {
+    background: #0a1a0a; border: 1px solid #1a4a1a; border-radius: 12px;
+    padding: 14px; margin-bottom: 12px;
+  }
+  .session-song-name {
+    font-size: 15px; font-weight: 700; letter-spacing: 0.06em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .session-song-meta { font-size: 10px; color: var(--dim); letter-spacing: 0.14em; margin-top: 2px; margin-bottom: 10px; }
+  .session-timer {
+    font-size: 52px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: var(--green); letter-spacing: -0.02em; text-align: center; line-height: 1;
+  }
+  .session-timer.urgent { color: var(--accent); }
+  .session-progress { height: 4px; background: var(--line); border-radius: 2px; margin: 8px 0 10px; overflow: hidden; }
+  .session-bar { height: 100%; background: var(--green); border-radius: 2px; transition: width 1s linear; }
+  .session-bar.urgent { background: var(--accent); }
+  .session-idx { font-size: 10px; color: var(--dim); letter-spacing: 0.14em; text-align: center; margin-bottom: 10px; }
+  .session-start-btn {
+    width: 100%; padding: 11px; margin-bottom: 10px;
+    background: linear-gradient(180deg,#1a3a1a,#0a1a0a); border: 1px solid #1a4a1a;
+    border-radius: 10px; color: var(--green); font-family: inherit;
+    font-size: 11px; letter-spacing: 0.2em; font-weight: 700; cursor: pointer;
+  }
+  .session-start-btn.active { background: linear-gradient(180deg,#2a2a2a,#141414); color: var(--dim); border-color: var(--line); }
   .song-action.delete { border-color: #4a1a1a; color: #884444; }
   .song-form { display: none; background: #0a0a0a; border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
   .song-form.visible { display: block; }
@@ -417,7 +452,7 @@
     font-size: 11px; letter-spacing: 0.08em; -webkit-appearance: none; appearance: none;
   }
   .form-input:focus, .section-type-sel:focus { outline: none; border-color: var(--accent); }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
   .section-header-row,
   .section-row { display: grid; grid-template-columns: 68px 1fr 1fr 1fr 28px; gap: 5px; margin-bottom: 5px; }
   .section-num {
@@ -460,7 +495,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v1.9</div>
+    <div class="meta">v2.0</div>
   </header>
 
   <section class="display">
@@ -677,6 +712,26 @@
       </span>
     </h2>
     <div class="section-body">
+      <!-- Session panel -->
+      <div class="session-panel" id="sessionPanel" style="display:none;">
+        <div class="session-song-name" id="sessionSongName">—</div>
+        <div class="session-song-meta" id="sessionSongMeta">—</div>
+        <div class="session-timer" id="sessionTimer">0:00</div>
+        <div class="session-progress"><div class="session-bar" id="sessionBar" style="width:100%"></div></div>
+        <div class="session-idx" id="sessionIdx">—</div>
+        <div class="transport">
+          <button class="btn" id="sessionPauseBtn">PAUSE</button>
+          <button class="btn" id="sessionSkipBtn">SKIP →</button>
+        </div>
+      </div>
+      <button class="session-start-btn" id="sessionStartBtn">▶ START PRACTICE SESSION</button>
+      <!-- Sort row -->
+      <div class="sort-row">
+        <button class="sort-btn" data-sort="bpm-asc">BPM ↑</button>
+        <button class="sort-btn" data-sort="bpm-desc">BPM ↓</button>
+        <button class="sort-btn" data-sort="title">A–Z</button>
+        <button class="sort-btn" data-sort="key">KEY</button>
+      </div>
       <button class="setlist-add-btn" id="setlistAddBtn">+ ADD SONG</button>
       <div class="song-form" id="songForm">
         <div class="form-field">
@@ -698,6 +753,10 @@
               <option value="4-4">4/4</option>
               <option value="6-8">6/8</option>
             </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">MIN</label>
+            <input class="form-input" id="formDuration" type="number" placeholder="0" min="0" max="60" />
           </div>
         </div>
         <div class="section-builder">
@@ -1824,7 +1883,7 @@
         '<div class="drag-handle">⠿</div>' +
         '<div class="song-card-content">' +
           '<div class="song-title">' + esc(song.title) + '</div>' +
-          '<div class="song-meta">' + esc(song.key) + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/') + '</div>' +
+          '<div class="song-meta">' + esc(song.key) + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/') + (song.duration ? ' · ' + song.duration + 'min' : '') + '</div>' +
           '<div class="song-structure">' + esc(struct) + '</div>' +
           (song.notes ? '<div class="song-notes">' + esc(song.notes) + '</div>' : '') +
           '<div class="song-actions">' +
@@ -1865,6 +1924,7 @@
     $('formKey').value = song ? song.key : '';
     $('formBpm').value = song ? song.bpm : state.bpm;
     $('formMeter').value = song ? song.timeSig : state.meter;
+    $('formDuration').value = song ? (song.duration || '') : '';
     $('formNotes').value = song ? (song.notes || '') : '';
     const rows = $('sectionRows'); rows.innerHTML = '';
     (song && song.sections.length ? song.sections : [null]).forEach(s => rows.appendChild(makeSectionRow(s)));
@@ -1873,6 +1933,87 @@
   }
 
   function closeSongForm() { $('songForm').classList.remove('visible'); $('setlistAddBtn').style.display = ''; editingId = null; }
+
+  // SORT
+  const KEY_ORDER = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+  function keyRank(k) { const i = KEY_ORDER.findIndex(n => n.toLowerCase() === (k||'').toLowerCase()); return i < 0 ? 99 : i; }
+
+  document.querySelector('.sort-row').addEventListener('click', e => {
+    const btn = e.target.closest('.sort-btn'); if (!btn) return;
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const songs = loadSongs();
+    const m = btn.dataset.sort;
+    if (m === 'bpm-asc')  songs.sort((a,b) => a.bpm - b.bpm);
+    if (m === 'bpm-desc') songs.sort((a,b) => b.bpm - a.bpm);
+    if (m === 'title')    songs.sort((a,b) => a.title.localeCompare(b.title));
+    if (m === 'key')      songs.sort((a,b) => keyRank(a.key) - keyRank(b.key));
+    saveSongs(songs); renderSongList();
+  });
+
+  // SESSION TIMER
+  const session = { active: false, songs: [], idx: 0, total: 0, left: 0, paused: false, tid: null };
+
+  function fmtTime(s) { return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
+
+  function loadSongIntoMetro(song) {
+    setBPM(song.bpm);
+    const mb = document.querySelector('#meterSeg button[data-meter="' + song.timeSig + '"]');
+    if (mb) mb.click();
+  }
+
+  function updateSessionUI() {
+    const song = session.songs[session.idx];
+    $('sessionSongName').textContent = song.title;
+    $('sessionSongMeta').textContent = song.key + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/');
+    $('sessionTimer').textContent = fmtTime(session.left);
+    $('sessionIdx').textContent = (session.idx + 1) + ' of ' + session.songs.length;
+    const pct = (session.left / session.total) * 100;
+    $('sessionBar').style.width = pct + '%';
+    const urgent = session.left <= 30;
+    $('sessionTimer').classList.toggle('urgent', urgent);
+    $('sessionBar').classList.toggle('urgent', urgent);
+    $('sessionPauseBtn').textContent = session.paused ? 'RESUME' : 'PAUSE';
+  }
+
+  function advanceSession() {
+    session.idx++;
+    if (session.idx >= session.songs.length) { endSession(); return; }
+    const song = session.songs[session.idx];
+    session.left = session.total = song.duration * 60;
+    loadSongIntoMetro(song);
+    updateSessionUI();
+  }
+
+  function endSession() {
+    clearInterval(session.tid);
+    session.active = false;
+    $('sessionPanel').style.display = 'none';
+    $('sessionStartBtn').textContent = '▶ START PRACTICE SESSION';
+    $('sessionStartBtn').classList.remove('active');
+  }
+
+  function startSession() {
+    const songs = loadSongs().filter(s => s.duration > 0);
+    if (!songs.length) { alert('Set a practice duration (MIN) on at least one song first.'); return; }
+    session.active = true; session.songs = songs; session.idx = 0; session.paused = false;
+    session.total = session.left = songs[0].duration * 60;
+    loadSongIntoMetro(songs[0]);
+    $('sessionPanel').style.display = 'block';
+    $('sessionStartBtn').textContent = '■ END SESSION';
+    $('sessionStartBtn').classList.add('active');
+    updateSessionUI();
+    session.tid = setInterval(() => {
+      if (session.paused) return;
+      session.left--;
+      if (session.left <= 0) advanceSession();
+      else updateSessionUI();
+    }, 1000);
+  }
+
+  $('sessionStartBtn').addEventListener('click', () => { if (session.active) endSession(); else startSession(); });
+  $('sessionPauseBtn').addEventListener('click', () => { session.paused = !session.paused; $('sessionPauseBtn').textContent = session.paused ? 'RESUME' : 'PAUSE'; });
+  $('sessionSkipBtn').addEventListener('click', advanceSession);
 
   $('setlistHeader').addEventListener('click', () => $('setlistSection').classList.toggle('collapsed'));
   $('setlistAddBtn').addEventListener('click', () => openSongForm(null));
@@ -1887,7 +2028,7 @@
       sections.push({ type: inputs[0].value, bars, bassIn: +inputs[2].value || 1, bassOut: +inputs[3].value || bars });
     });
     const songs = loadSongs();
-    const entry = { id: editingId || Date.now(), title, key: $('formKey').value.trim() || '?', bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, sections, notes: $('formNotes').value.trim() };
+    const entry = { id: editingId || Date.now(), title, key: $('formKey').value.trim() || '?', bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, duration: +$('formDuration').value || 0, sections, notes: $('formNotes').value.trim() };
     const idx = songs.findIndex(s => s.id === editingId);
     if (idx >= 0) songs[idx] = entry; else songs.push(entry);
     saveSongs(songs); closeSongForm(); renderSongList();
