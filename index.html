@@ -384,6 +384,7 @@
     font-size: 9px; letter-spacing: 0.14em; cursor: pointer; text-align: center;
   }
   .song-action.load   { border-color: var(--accent); color: var(--accent); }
+  .song-action.gig    { border-color: var(--green); color: var(--green); }
 
   .sort-row { display: flex; gap: 5px; margin-bottom: 10px; }
   .sort-btn {
@@ -432,7 +433,7 @@
   .form-input:focus, .section-type-sel:focus { outline: none; border-color: var(--accent); }
   .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
   .section-header-row,
-  .section-row { display: grid; grid-template-columns: 68px 1fr 1fr 1fr 28px; gap: 5px; margin-bottom: 5px; }
+  .section-row { display: grid; grid-template-columns: 80px 1fr 28px; gap: 5px; margin-bottom: 5px; }
   .section-num {
     padding: 6px 5px; background: #050505; border: 1px solid var(--line);
     border-radius: 4px; color: var(--ink); font-family: inherit; font-size: 11px;
@@ -450,6 +451,66 @@
   }
   .form-actions { display: flex; gap: 8px; margin-top: 12px; }
   .form-actions .btn { height: 44px; font-size: 11px; }
+
+  /* GIG MODE */
+  .gig-overlay {
+    position: fixed; inset: 0; z-index: 300; background: #050505;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .gig-top {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px 10px; border-bottom: 1px solid var(--line); flex-shrink: 0;
+  }
+  .gig-song-pos { font-size: 10px; letter-spacing: 0.2em; color: var(--dim); }
+  .gig-end-btn {
+    font-family: inherit; font-size: 10px; letter-spacing: 0.2em;
+    background: transparent; border: 1px solid var(--line); border-radius: 6px;
+    color: var(--dim); padding: 6px 12px; cursor: pointer;
+  }
+  .gig-content {
+    flex: 1; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; padding: 16px 20px; text-align: center;
+  }
+  .gig-song-title { font-size: 17px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink); }
+  .gig-song-meta { font-size: 11px; color: var(--dim); letter-spacing: 0.14em; margin-top: 3px; margin-bottom: 28px; }
+  .gig-section-name {
+    font-size: 68px; font-weight: 700; letter-spacing: 0.04em; line-height: 1;
+    color: var(--ink); transition: color 0.2s ease;
+  }
+  .gig-section-name.flash { color: var(--accent); }
+  .gig-timer-display {
+    font-size: 80px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: var(--green); letter-spacing: -0.04em; line-height: 1; margin: 6px 0;
+  }
+  .gig-timer-display.urgent { color: var(--accent); }
+  .gig-progress { width: 100%; max-width: 320px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin: 10px 0; }
+  .gig-progress-bar { height: 100%; background: var(--green); border-radius: 2px; transition: width 1s linear; }
+  .gig-progress-bar.urgent { background: var(--accent); }
+  .gig-next-label { font-size: 12px; letter-spacing: 0.16em; color: var(--dim); min-height: 18px; margin-top: 4px; }
+  .gig-dots { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
+  .gig-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); transition: background 0.2s; }
+  .gig-dot.done { background: var(--dim); }
+  .gig-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .gig-bottom { padding: 14px 20px 28px; border-top: 1px solid var(--line); flex-shrink: 0; }
+  .gig-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .gig-btn {
+    height: 54px; border-radius: 12px; border: 1px solid var(--line);
+    background: #0a0a0a; color: var(--ink); font-family: inherit;
+    font-size: 11px; letter-spacing: 0.16em; cursor: pointer;
+  }
+  .gig-next-song {
+    width: 100%; height: 52px; border-radius: 12px;
+    background: linear-gradient(180deg, #1a0a1a, #0a050a);
+    border: 1px solid #3a1a3a; color: #cc88cc;
+    font-family: inherit; font-size: 11px; letter-spacing: 0.18em; font-weight: 700; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 12px;
+  }
+  .gig-next-song:disabled { opacity: 0.3; cursor: default; }
+  .gig-resume-banner {
+    background: #0a180a; border: 1px solid #1a4a1a; border-radius: 10px;
+    padding: 12px; margin-bottom: 10px; display: none;
+  }
+  .gig-resume-banner p { margin: 0 0 10px; font-size: 11px; letter-spacing: 0.06em; color: var(--ink); }
 
   /* SHARE / IMPORT */
   .share-row { display: flex; gap: 5px; margin-bottom: 10px; }
@@ -504,7 +565,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v2.3</div>
+    <div class="meta">v2.4</div>
   </header>
 
   <section class="display">
@@ -716,6 +777,14 @@
       </div>
       <button class="session-start-btn" id="sessionStartBtn">▶ START PRACTICE SESSION</button>
       <div id="sessionMsg" style="display:none;font-size:10px;color:var(--accent-soft);letter-spacing:0.06em;text-align:center;padding:6px 0 2px;"></div>
+      <!-- Gig resume banner -->
+      <div class="gig-resume-banner" id="gigResumeBanner">
+        <p id="gigResumeMsg">Gig in progress. Resume?</p>
+        <div class="transport">
+          <button class="btn primary" id="gigResumeYes">RESUME GIG</button>
+          <button class="btn" id="gigResumeNo">DISMISS</button>
+        </div>
+      </div>
       <!-- Import banner (shown when URL contains import data) -->
       <div class="import-banner" id="importBanner">
         <p id="importBannerMsg">Setlist found. Import?</p>
@@ -770,9 +839,7 @@
           <div class="form-label" style="margin-bottom:6px;">STRUCTURE</div>
           <div class="section-header-row">
             <div class="form-label">TYPE</div>
-            <div class="form-label">BARS</div>
-            <div class="form-label">BASS IN</div>
-            <div class="form-label">BASS OUT</div>
+            <div class="form-label">SECONDS</div>
             <div></div>
           </div>
           <div id="sectionRows"></div>
@@ -790,6 +857,31 @@
       <div id="songList"></div>
     </div>
   </section>
+
+  <!-- GIG MODE OVERLAY -->
+  <div class="gig-overlay" id="gigOverlay" style="display:none;">
+    <div class="gig-top">
+      <div class="gig-song-pos" id="gigSongPos">SONG 1 OF 1</div>
+      <button class="gig-end-btn" id="gigEndBtn">END GIG</button>
+    </div>
+    <div class="gig-content">
+      <div class="gig-song-title" id="gigSongTitle">—</div>
+      <div class="gig-song-meta" id="gigSongMeta">—</div>
+      <div class="gig-section-name" id="gigSectionName">—</div>
+      <div class="gig-timer-display" id="gigTimerDisplay">0:00</div>
+      <div class="gig-progress"><div class="gig-progress-bar" id="gigProgressBar" style="width:100%"></div></div>
+      <div class="gig-next-label" id="gigNextLabel"></div>
+      <div class="gig-dots" id="gigDots"></div>
+    </div>
+    <div class="gig-bottom">
+      <div class="gig-controls">
+        <button class="gig-btn" id="gigPrevBtn">◀ PREV</button>
+        <button class="gig-btn" id="gigPauseBtn">PAUSE</button>
+        <button class="gig-btn" id="gigNextSecBtn">NEXT ▶</button>
+      </div>
+      <button class="gig-next-song" id="gigNextSongBtn">NEXT SONG →</button>
+    </div>
+  </div>
 
   <!-- QR MODAL -->
   <div class="qr-overlay" id="qrOverlay" style="display:none;">
@@ -1815,8 +1907,8 @@
       card.className = 'song-card';
       card.dataset.songId = song.id;
       const struct = song.sections.map(s => {
-        const inOut = (s.bassIn > 1 || s.bassOut < s.bars) ? ' [in:' + s.bassIn + ' out:' + s.bassOut + ']' : '';
-        return s.type + '(' + s.bars + ')' + inOut;
+        const dur = s.seconds ? s.seconds + 's' : (s.bars ? s.bars + 'b' : '');
+        return s.type + (dur ? '(' + dur + ')' : '');
       }).join(' → ');
       card.innerHTML =
         '<div class="drag-handle">⠿</div>' +
@@ -1826,12 +1918,19 @@
           '<div class="song-structure">' + esc(struct) + '</div>' +
           (song.notes ? '<div class="song-notes">' + esc(song.notes) + '</div>' : '') +
           '<div class="song-actions">' +
+            '<button class="song-action gig">GIG</button>' +
             '<button class="song-action load">LOAD</button>' +
             '<button class="song-action edit">EDIT</button>' +
             '<button class="song-action delete">DELETE</button>' +
           '</div>' +
         '</div>';
       card.querySelector('.song-title').addEventListener('click', () => card.classList.toggle('expanded'));
+      card.querySelector('.gig').addEventListener('click', e => {
+        e.stopPropagation();
+        const allSongs = loadSongs();
+        const fromIdx = allSongs.findIndex(s => s.id === song.id);
+        startGig(allSongs, fromIdx);
+      });
       card.querySelector('.load').addEventListener('click', e => {
         e.stopPropagation();
         setBPM(song.bpm);
@@ -1847,11 +1946,10 @@
 
   function makeSectionRow(sec) {
     const row = document.createElement('div'); row.className = 'section-row';
+    const secs = sec ? (sec.seconds || (sec.bars ? sec.bars * 4 : '')) : '';
     row.innerHTML =
       '<select class="section-type-sel">' + SEC_TYPES.map(t => '<option value="' + t + '"' + (sec && sec.type===t?' selected':'') + '>' + t + '</option>').join('') + '</select>' +
-      '<input class="section-num" type="number" placeholder="Bars" min="1" max="99" value="' + (sec ? sec.bars : '') + '" />' +
-      '<input class="section-num" type="number" placeholder="1" min="1" max="99" value="' + (sec ? sec.bassIn : '') + '" />' +
-      '<input class="section-num" type="number" placeholder="—" min="1" max="99" value="' + (sec ? sec.bassOut : '') + '" />' +
+      '<input class="section-num" type="number" placeholder="sec" min="1" max="999" value="' + secs + '" />' +
       '<button class="section-remove">✕</button>';
     row.querySelector('.section-remove').addEventListener('click', () => row.remove());
     return row;
@@ -2052,6 +2150,155 @@
     pendingImport = null; $('importBanner').style.display = 'none';
   });
 
+  /* ============================================================
+     GIG MODE
+  ============================================================ */
+  const GIG_KEY = 'metro-buddy-gig';
+  const gig = { active: false, songs: [], songIdx: 0, sectionIdx: 0, secondsLeft: 0, totalSec: 0, paused: false, tid: null };
+
+  function saveGigState() {
+    localStorage.setItem(GIG_KEY, JSON.stringify({ songIdx: gig.songIdx, sectionIdx: gig.sectionIdx, secondsLeft: gig.secondsLeft }));
+  }
+  function clearGigState() { localStorage.removeItem(GIG_KEY); }
+  function secDur(sec) { return sec.seconds || (sec.bars ? sec.bars * 4 : 30); }
+
+  function gigLoadSection() {
+    const sec = gig.songs[gig.songIdx].sections[gig.sectionIdx];
+    gig.totalSec = gig.secondsLeft = secDur(sec);
+    updateGigUI();
+    flashGigSection();
+  }
+
+  function startGig(songs, fromIdx) {
+    if (!songs[fromIdx] || !songs[fromIdx].sections || !songs[fromIdx].sections.length) return;
+    clearInterval(gig.tid);
+    gig.songs = songs; gig.songIdx = fromIdx; gig.sectionIdx = 0; gig.paused = false; gig.active = true;
+    gig.totalSec = gig.secondsLeft = secDur(songs[fromIdx].sections[0]);
+    loadSongIntoMetro(songs[fromIdx]);
+    $('gigOverlay').style.display = 'flex';
+    updateGigUI();
+    gig.tid = setInterval(() => {
+      if (gig.paused) return;
+      gig.secondsLeft--;
+      saveGigState();
+      if (gig.secondsLeft <= 0) gigNextSection(true);
+      else updateGigTimerOnly();
+    }, 1000);
+  }
+
+  function resumeGig(gs) {
+    const songs = loadSongs();
+    if (!songs.length) return;
+    gig.songs = songs;
+    gig.songIdx = Math.min(gs.songIdx, songs.length - 1);
+    const song = gig.songs[gig.songIdx];
+    if (!song || !song.sections.length) return;
+    gig.sectionIdx = Math.min(gs.sectionIdx, song.sections.length - 1);
+    gig.totalSec = secDur(song.sections[gig.sectionIdx]);
+    gig.secondsLeft = gs.secondsLeft || gig.totalSec;
+    gig.paused = true; gig.active = true;
+    loadSongIntoMetro(song);
+    $('gigOverlay').style.display = 'flex';
+    updateGigUI();
+    $('gigPauseBtn').textContent = 'RESUME';
+    gig.tid = setInterval(() => {
+      if (gig.paused) return;
+      gig.secondsLeft--;
+      saveGigState();
+      if (gig.secondsLeft <= 0) gigNextSection(true);
+      else updateGigTimerOnly();
+    }, 1000);
+  }
+
+  function gigNextSection(auto) {
+    const song = gig.songs[gig.songIdx];
+    if (gig.sectionIdx < song.sections.length - 1) {
+      gig.sectionIdx++;
+      gigLoadSection();
+    } else if (!auto) {
+      gigNextSong();
+    } else {
+      gig.secondsLeft = 0; updateGigTimerOnly();
+    }
+  }
+
+  function gigNextSong() {
+    if (gig.songIdx >= gig.songs.length - 1) { endGig(); return; }
+    gig.songIdx++; gig.sectionIdx = 0;
+    loadSongIntoMetro(gig.songs[gig.songIdx]);
+    gigLoadSection();
+  }
+
+  function gigPrevSection() {
+    if (gig.sectionIdx > 0) { gig.sectionIdx--; gigLoadSection(); }
+  }
+
+  function endGig() {
+    clearInterval(gig.tid); gig.active = false;
+    clearGigState(); $('gigOverlay').style.display = 'none';
+  }
+
+  function updateGigTimerOnly() {
+    const urgent = gig.secondsLeft <= 10;
+    $('gigTimerDisplay').textContent = fmtTime(gig.secondsLeft);
+    $('gigTimerDisplay').classList.toggle('urgent', urgent);
+    $('gigProgressBar').classList.toggle('urgent', urgent);
+    $('gigProgressBar').style.width = (gig.totalSec > 0 ? (gig.secondsLeft / gig.totalSec * 100) : 0) + '%';
+  }
+
+  function updateGigUI() {
+    const song = gig.songs[gig.songIdx];
+    const sec = song.sections[gig.sectionIdx];
+    const nextSec = song.sections[gig.sectionIdx + 1];
+    const isLastSong = gig.songIdx >= gig.songs.length - 1;
+    $('gigSongPos').textContent = 'SONG ' + (gig.songIdx + 1) + ' OF ' + gig.songs.length;
+    $('gigSongTitle').textContent = song.title;
+    $('gigSongMeta').textContent = song.key + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/');
+    $('gigSectionName').textContent = sec.type.toUpperCase();
+    updateGigTimerOnly();
+    if (nextSec) $('gigNextLabel').textContent = 'NEXT: ' + nextSec.type.toUpperCase();
+    else if (!isLastSong) $('gigNextLabel').textContent = 'NEXT SONG: ' + gig.songs[gig.songIdx + 1].title;
+    else $('gigNextLabel').textContent = 'LAST SECTION';
+    const dots = $('gigDots'); dots.innerHTML = '';
+    song.sections.forEach((s, i) => {
+      const d = document.createElement('div');
+      d.className = 'gig-dot' + (i < gig.sectionIdx ? ' done' : i === gig.sectionIdx ? ' active' : '');
+      dots.appendChild(d);
+    });
+    $('gigNextSongBtn').disabled = isLastSong;
+    $('gigNextSongBtn').textContent = isLastSong ? 'LAST SONG' : 'NEXT SONG → ' + gig.songs[gig.songIdx + 1].title;
+  }
+
+  function flashGigSection() {
+    const el = $('gigSectionName'); el.classList.add('flash');
+    setTimeout(() => el.classList.remove('flash'), 400);
+  }
+
+  $('gigPrevBtn').addEventListener('click', gigPrevSection);
+  $('gigPauseBtn').addEventListener('click', () => {
+    gig.paused = !gig.paused;
+    $('gigPauseBtn').textContent = gig.paused ? 'RESUME' : 'PAUSE';
+  });
+  $('gigNextSecBtn').addEventListener('click', () => gigNextSection(false));
+  $('gigNextSongBtn').addEventListener('click', gigNextSong);
+  $('gigEndBtn').addEventListener('click', endGig);
+
+  // Check for saved gig state on load
+  (() => {
+    const raw = localStorage.getItem(GIG_KEY);
+    if (!raw) return;
+    try {
+      const gs = JSON.parse(raw);
+      const songs = loadSongs();
+      if (!songs.length || !songs[gs.songIdx]) { clearGigState(); return; }
+      const banner = $('gigResumeBanner');
+      $('gigResumeMsg').textContent = 'Gig in progress: ' + songs[gs.songIdx].title + '. Resume?';
+      banner.style.display = 'block';
+      $('gigResumeYes').addEventListener('click', () => { banner.style.display = 'none'; resumeGig(gs); });
+      $('gigResumeNo').addEventListener('click', () => { banner.style.display = 'none'; clearGigState(); });
+    } catch { clearGigState(); }
+  })();
+
   $('setlistHeader').addEventListener('click', () => $('setlistSection').classList.toggle('collapsed'));
   $('setlistAddBtn').addEventListener('click', () => openSongForm(null));
   $('formCancelBtn').addEventListener('click', closeSongForm);
@@ -2061,8 +2308,7 @@
     const sections = [];
     $('sectionRows').querySelectorAll('.section-row').forEach(row => {
       const inputs = row.querySelectorAll('select, input[type="number"]');
-      const bars = +inputs[1].value || 8;
-      sections.push({ type: inputs[0].value, bars, bassIn: +inputs[2].value || 1, bassOut: +inputs[3].value || bars });
+      sections.push({ type: inputs[0].value, seconds: +inputs[1].value || 30 });
     });
     const songs = loadSongs();
     const entry = { id: editingId || Date.now(), title, key: $('formKey').value.trim() || '?', bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, duration: +$('formDuration').value || 0, sections, notes: $('formNotes').value.trim() };
