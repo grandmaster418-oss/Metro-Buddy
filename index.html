@@ -360,28 +360,6 @@
   .ear-answer.correct { background: #0a2010; border-color: var(--green); color: var(--green); }
   .ear-answer.wrong   { background: #200a0a; border-color: var(--accent); color: var(--accent); }
 
-  /* RHYTHM DRILL */
-  .rhythm-display {
-    background: #0a0a0a; border: 1px solid var(--line); border-radius: 10px;
-    padding: 14px; text-align: center; margin-bottom: 12px;
-    font-size: 11px; letter-spacing: 0.14em; color: var(--dim); min-height: 44px;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .rhythm-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .rhythm-answer {
-    padding: 10px 8px; background: #0a0a0a; border: 1px solid var(--line);
-    border-radius: 8px; color: var(--ink); font-family: inherit;
-    font-size: 9px; letter-spacing: 0.14em; cursor: pointer; text-align: center;
-  }
-  .rhythm-answer.correct { background: #0a2010; border-color: var(--green); color: var(--green); }
-  .rhythm-answer.wrong   { background: #200a0a; border-color: var(--accent); color: var(--accent); }
-  .rhythm-answer.correct .rg-cell.on { background: var(--green); border-color: var(--green); }
-  .rhythm-answer.wrong   .rg-cell.on { background: var(--accent); border-color: var(--accent); }
-  .rhythm-grid { display: grid; grid-template-columns: repeat(8,1fr); gap: 2px; margin: 6px 0 4px; }
-  .rg-cell { height: 14px; background: #151515; border: 1px solid var(--line); border-radius: 2px; }
-  .rg-cell.on { background: #5a5a5a; border-color: #8a8a8a; }
-  .rg-cell.beat { border-color: #383838; }
-  .rhythm-grid-labels { display: grid; grid-template-columns: repeat(8,1fr); gap: 2px; font-size: 7px; color: var(--dim); text-align: center; letter-spacing: 0; }
 
   /* SETLIST */
   .setlist-add-btn {
@@ -495,7 +473,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v2.1</div>
+    <div class="meta">v2.2</div>
   </header>
 
   <section class="display">
@@ -682,25 +660,6 @@
     </div>
   </section>
 
-  <!-- RHYTHM DRILL -->
-  <section class="section collapsed" id="rhythmSection">
-    <h2 id="rhythmHeader">
-      <span>RHYTHM DRILL · 4/4</span>
-      <span class="h2-right"><span class="chevron">▾</span></span>
-    </h2>
-    <div class="section-body">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <span class="label-sm">SCORE</span>
-        <span class="label-sm" id="rhythmScore">0 / 0</span>
-      </div>
-      <div class="rhythm-display" id="rhythmStatus">PRESS PLAY</div>
-      <div class="transport" style="margin-bottom:12px;">
-        <button class="btn primary" id="rhythmPlayBtn">PLAY</button>
-        <button class="btn" id="rhythmReplayBtn">REPLAY</button>
-      </div>
-      <div class="rhythm-answers" id="rhythmAnswers"></div>
-    </div>
-  </section>
 
   <!-- SETLIST -->
   <section class="section collapsed" id="setlistSection">
@@ -1744,84 +1703,6 @@
   });
   buildEarAnswers(); newEarQuestion();
 
-  /* ============================================================
-     RHYTHM DRILL
-  ============================================================ */
-  const rhythmPatterns = [
-    { name: 'QUARTER NOTES',   desc: '1 · 2 · 3 · 4 ·',       steps: [0,2,4,6] },
-    { name: '8TH NOTES',       desc: '1 & 2 & 3 & 4 &',        steps: [0,1,2,3,4,5,6,7] },
-    { name: 'DOTTED QUARTER',  desc: '1 · · & 2 · · &',        steps: [0,3,4,7] },
-    { name: 'OFF-BEAT 8THS',   desc: '· & · & · & · &',        steps: [1,3,5,7] },
-    { name: 'HALF TIME',       desc: '1 · · · 3 · · ·',        steps: [0,4] },
-    { name: 'SYNCOPATED',      desc: '1 & · & 3 & · &',        steps: [0,1,3,4,5,7] },
-    { name: '1  3  4',         desc: '1 · · · 3 · 4 ·',        steps: [0,4,6] },
-    { name: 'OFF-BEAT GROOVE', desc: '· & 2 · · & 4 ·',        steps: [1,2,5,6] },
-  ];
-
-  const rhythmState = { score: 0, total: 0, current: null, choices: [], answered: false };
-
-  function playRhythmPattern(pat) {
-    ensureAudio();
-    const eighth = 60 / state.bpm / 2;
-    const now = audioCtx.currentTime + 0.05;
-    pat.steps.forEach(s => playBassNote(82.41, now + s * eighth, eighth * 0.75));
-  }
-
-  function fisherYates(arr) {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-    return a;
-  }
-
-  function newRhythmQuestion() {
-    rhythmState.current = rhythmPatterns[Math.floor(Math.random() * rhythmPatterns.length)];
-    const others = fisherYates(rhythmPatterns.filter(p => p.name !== rhythmState.current.name)).slice(0, 3);
-    rhythmState.choices = fisherYates([...others, rhythmState.current]);
-    rhythmState.answered = false;
-    $('rhythmStatus').textContent = 'PRESS PLAY';
-    buildRhythmAnswers();
-  }
-
-  function makeRhythmGrid(steps) {
-    const beatPos = [0, 2, 4, 6];
-    let html = '<div class="rhythm-grid">';
-    for (let i = 0; i < 8; i++) {
-      const on = steps.includes(i) ? ' on' : '';
-      const beat = beatPos.includes(i) ? ' beat' : '';
-      html += '<div class="rg-cell' + on + beat + '"></div>';
-    }
-    html += '</div><div class="rhythm-grid-labels"><span>1</span><span>&</span><span>2</span><span>&</span><span>3</span><span>&</span><span>4</span><span>&</span></div>';
-    return html;
-  }
-
-  function buildRhythmAnswers() {
-    const el = $('rhythmAnswers'); el.innerHTML = '';
-    rhythmState.choices.forEach(p => {
-      const b = document.createElement('button');
-      b.className = 'rhythm-answer'; b.dataset.name = p.name;
-      b.innerHTML = p.name + makeRhythmGrid(p.steps);
-      b.addEventListener('click', () => {
-        if (rhythmState.answered) return;
-        rhythmState.answered = true; rhythmState.total++;
-        const ok = p.name === rhythmState.current.name;
-        if (ok) { rhythmState.score++; b.classList.add('correct'); $('rhythmStatus').textContent = '✓ ' + p.name; }
-        else {
-          b.classList.add('wrong');
-          el.querySelectorAll('.rhythm-answer').forEach(x => { if (x.dataset.name === rhythmState.current.name) x.classList.add('correct'); });
-          $('rhythmStatus').textContent = rhythmState.current.name;
-        }
-        el.querySelectorAll('.rhythm-answer').forEach(x => x.disabled = true);
-        $('rhythmScore').textContent = rhythmState.score + ' / ' + rhythmState.total;
-        setTimeout(newRhythmQuestion, 1600);
-      });
-      el.appendChild(b);
-    });
-  }
-
-  $('rhythmHeader').addEventListener('click', () => $('rhythmSection').classList.toggle('collapsed'));
-  $('rhythmPlayBtn').addEventListener('click', async () => { await resumeAudio(); playRhythmPattern(rhythmState.current); $('rhythmStatus').textContent = 'LISTENING...'; });
-  $('rhythmReplayBtn').addEventListener('click', async () => { await resumeAudio(); playRhythmPattern(rhythmState.current); });
-  newRhythmQuestion();
 
   /* ============================================================
      SETLIST
