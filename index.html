@@ -495,7 +495,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v2.0</div>
+    <div class="meta">v2.1</div>
   </header>
 
   <section class="display">
@@ -725,6 +725,7 @@
         </div>
       </div>
       <button class="session-start-btn" id="sessionStartBtn">▶ START PRACTICE SESSION</button>
+      <div id="sessionMsg" style="display:none;font-size:10px;color:var(--accent-soft);letter-spacing:0.06em;text-align:center;padding:6px 0 2px;"></div>
       <!-- Sort row -->
       <div class="sort-row">
         <button class="sort-btn" data-sort="bpm-asc">BPM ↑</button>
@@ -1995,7 +1996,13 @@
 
   function startSession() {
     const songs = loadSongs().filter(s => s.duration > 0);
-    if (!songs.length) { alert('Set a practice duration (MIN) on at least one song first.'); return; }
+    if (!songs.length) {
+      const msg = $('sessionMsg');
+      msg.textContent = 'Add a MIN value to at least one song to start a session.';
+      msg.style.display = 'block';
+      setTimeout(() => { msg.style.display = 'none'; }, 3000);
+      return;
+    }
     session.active = true; session.songs = songs; session.idx = 0; session.paused = false;
     session.total = session.left = songs[0].duration * 60;
     loadSongIntoMetro(songs[0]);
