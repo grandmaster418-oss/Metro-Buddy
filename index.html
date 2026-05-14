@@ -364,17 +364,24 @@
   .rhythm-display {
     background: #0a0a0a; border: 1px solid var(--line); border-radius: 10px;
     padding: 14px; text-align: center; margin-bottom: 12px;
-    font-size: 12px; letter-spacing: 0.14em; color: var(--dim); min-height: 44px;
+    font-size: 11px; letter-spacing: 0.14em; color: var(--dim); min-height: 44px;
     display: flex; align-items: center; justify-content: center;
   }
   .rhythm-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .rhythm-answer {
-    padding: 12px 8px; background: #0a0a0a; border: 1px solid var(--line);
+    padding: 10px 8px; background: #0a0a0a; border: 1px solid var(--line);
     border-radius: 8px; color: var(--ink); font-family: inherit;
-    font-size: 10px; letter-spacing: 0.12em; cursor: pointer; text-align: center; line-height: 1.5;
+    font-size: 9px; letter-spacing: 0.14em; cursor: pointer; text-align: center;
   }
   .rhythm-answer.correct { background: #0a2010; border-color: var(--green); color: var(--green); }
   .rhythm-answer.wrong   { background: #200a0a; border-color: var(--accent); color: var(--accent); }
+  .rhythm-answer.correct .rg-cell.on { background: var(--green); border-color: var(--green); }
+  .rhythm-answer.wrong   .rg-cell.on { background: var(--accent); border-color: var(--accent); }
+  .rhythm-grid { display: grid; grid-template-columns: repeat(8,1fr); gap: 2px; margin: 6px 0 4px; }
+  .rg-cell { height: 14px; background: #151515; border: 1px solid var(--line); border-radius: 2px; }
+  .rg-cell.on { background: #5a5a5a; border-color: #8a8a8a; }
+  .rg-cell.beat { border-color: #383838; }
+  .rhythm-grid-labels { display: grid; grid-template-columns: repeat(8,1fr); gap: 2px; font-size: 7px; color: var(--dim); text-align: center; letter-spacing: 0; }
 
   /* SETLIST */
   .setlist-add-btn {
@@ -433,7 +440,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v1.5</div>
+    <div class="meta">v1.6</div>
   </header>
 
   <section class="display">
@@ -632,7 +639,10 @@
         <span class="label-sm" id="rhythmScore">0 / 0</span>
       </div>
       <div class="rhythm-display" id="rhythmStatus">PRESS PLAY</div>
-      <button class="btn primary" id="rhythmPlayBtn" style="width:100%;height:48px;margin-bottom:12px;">PLAY PATTERN</button>
+      <div class="transport" style="margin-bottom:12px;">
+        <button class="btn primary" id="rhythmPlayBtn">PLAY</button>
+        <button class="btn" id="rhythmReplayBtn">REPLAY</button>
+      </div>
       <div class="rhythm-answers" id="rhythmAnswers"></div>
     </div>
   </section>
@@ -1672,12 +1682,24 @@
     buildRhythmAnswers();
   }
 
+  function makeRhythmGrid(steps) {
+    const beatPos = [0, 2, 4, 6];
+    let html = '<div class="rhythm-grid">';
+    for (let i = 0; i < 8; i++) {
+      const on = steps.includes(i) ? ' on' : '';
+      const beat = beatPos.includes(i) ? ' beat' : '';
+      html += '<div class="rg-cell' + on + beat + '"></div>';
+    }
+    html += '</div><div class="rhythm-grid-labels"><span>1</span><span>&</span><span>2</span><span>&</span><span>3</span><span>&</span><span>4</span><span>&</span></div>';
+    return html;
+  }
+
   function buildRhythmAnswers() {
     const el = $('rhythmAnswers'); el.innerHTML = '';
     rhythmState.choices.forEach(p => {
       const b = document.createElement('button');
       b.className = 'rhythm-answer'; b.dataset.name = p.name;
-      b.innerHTML = p.name + '<br><span style="color:var(--dim);font-size:9px;letter-spacing:0.06em;">' + p.desc + '</span>';
+      b.innerHTML = p.name + makeRhythmGrid(p.steps);
       b.addEventListener('click', () => {
         if (rhythmState.answered) return;
         rhythmState.answered = true; rhythmState.total++;
@@ -1697,7 +1719,8 @@
   }
 
   $('rhythmHeader').addEventListener('click', () => $('rhythmSection').classList.toggle('collapsed'));
-  $('rhythmPlayBtn').addEventListener('click', () => { ensureAudio(); playRhythmPattern(rhythmState.current); });
+  $('rhythmPlayBtn').addEventListener('click', () => { ensureAudio(); playRhythmPattern(rhythmState.current); $('rhythmStatus').textContent = 'LISTENING...'; });
+  $('rhythmReplayBtn').addEventListener('click', () => { ensureAudio(); playRhythmPattern(rhythmState.current); });
   newRhythmQuestion();
 
   /* ============================================================
