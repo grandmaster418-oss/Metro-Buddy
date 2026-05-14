@@ -451,6 +451,37 @@
   .form-actions { display: flex; gap: 8px; margin-top: 12px; }
   .form-actions .btn { height: 44px; font-size: 11px; }
 
+  /* SHARE / IMPORT */
+  .share-row { display: flex; gap: 5px; margin-bottom: 10px; }
+  .share-btn {
+    flex: 1; padding: 8px 4px; background: #0a0a0a;
+    border: 1px solid var(--line); border-radius: 6px;
+    color: var(--dim); font-family: inherit;
+    font-size: 9px; letter-spacing: 0.14em; cursor: pointer; text-align: center;
+  }
+  .share-btn:active { background: #050505; }
+  .share-btn.copied { border-color: var(--green); color: var(--green); }
+
+  .qr-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; padding: 20px;
+  }
+  .qr-box {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    padding: 20px; text-align: center; max-width: 300px; width: 100%;
+  }
+  .qr-title { font-size: 11px; letter-spacing: 0.22em; color: var(--dim); margin-bottom: 14px; }
+  .qr-img { width: 220px; height: 220px; border-radius: 6px; display: block; margin: 0 auto; background: #fff; padding: 6px; }
+  .qr-hint { margin-top: 10px; font-size: 9px; color: var(--dim); letter-spacing: 0.06em; line-height: 1.5; }
+
+  .import-banner {
+    background: #0a1a2a; border: 1px solid #1a4a7a; border-radius: 10px;
+    padding: 12px; margin-bottom: 10px; display: none;
+  }
+  .import-banner p { margin: 0 0 10px; font-size: 11px; letter-spacing: 0.06em; color: var(--ink); }
+  .import-banner .transport { margin: 0; }
+
   /* NOTES */
   .notes-pad {
     width: 100%; min-height: 140px; padding: 10px 12px;
@@ -473,7 +504,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v2.2</div>
+    <div class="meta">v2.3</div>
   </header>
 
   <section class="display">
@@ -685,6 +716,22 @@
       </div>
       <button class="session-start-btn" id="sessionStartBtn">▶ START PRACTICE SESSION</button>
       <div id="sessionMsg" style="display:none;font-size:10px;color:var(--accent-soft);letter-spacing:0.06em;text-align:center;padding:6px 0 2px;"></div>
+      <!-- Import banner (shown when URL contains import data) -->
+      <div class="import-banner" id="importBanner">
+        <p id="importBannerMsg">Setlist found. Import?</p>
+        <div class="transport">
+          <button class="btn primary" id="importYesBtn">IMPORT</button>
+          <button class="btn" id="importNoBtn">CANCEL</button>
+        </div>
+      </div>
+      <!-- Share row -->
+      <div class="share-row">
+        <button class="share-btn" id="exportBtn">⬇ EXPORT</button>
+        <button class="share-btn" id="importFileBtn">⬆ IMPORT</button>
+        <button class="share-btn" id="copyLinkBtn">🔗 LINK</button>
+        <button class="share-btn" id="qrBtn">⬛ QR</button>
+      </div>
+      <input type="file" id="importFileInput" accept=".json" style="display:none;">
       <!-- Sort row -->
       <div class="sort-row">
         <button class="sort-btn" data-sort="bpm-asc">BPM ↑</button>
@@ -743,6 +790,16 @@
       <div id="songList"></div>
     </div>
   </section>
+
+  <!-- QR MODAL -->
+  <div class="qr-overlay" id="qrOverlay" style="display:none;">
+    <div class="qr-box">
+      <div class="qr-title">SCAN TO IMPORT SETLIST</div>
+      <img class="qr-img" id="qrImg" src="" alt="QR Code" />
+      <div class="qr-hint" id="qrHint">Point your phone camera at this code.<br>Or use the LINK button to share via message.</div>
+      <button class="btn" style="width:100%;margin-top:14px;" id="qrCloseBtn">CLOSE</button>
+    </div>
+  </div>
 
   <!-- NOTES -->
   <section class="section collapsed" id="notesSection">
@@ -1902,6 +1959,98 @@
   $('sessionStartBtn').addEventListener('click', () => { if (session.active) endSession(); else startSession(); });
   $('sessionPauseBtn').addEventListener('click', () => { session.paused = !session.paused; $('sessionPauseBtn').textContent = session.paused ? 'RESUME' : 'PAUSE'; });
   $('sessionSkipBtn').addEventListener('click', advanceSession);
+
+  // ENCODE / DECODE (handles Unicode)
+  function encodeSetlist(songs) {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(songs))));
+  }
+  function decodeSetlist(str) {
+    return JSON.parse(decodeURIComponent(escape(atob(str))));
+  }
+  function shareURL(songs) {
+    const base = location.origin + location.pathname;
+    return base + '#import=' + encodeSetlist(songs);
+  }
+
+  // EXPORT — download as .json file
+  $('exportBtn').addEventListener('click', () => {
+    const songs = loadSongs();
+    if (!songs.length) return;
+    const blob = new Blob([JSON.stringify(songs, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'metro-buddy-setlist.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // IMPORT — from .json file
+  $('importFileBtn').addEventListener('click', () => $('importFileInput').click());
+  $('importFileInput').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const songs = JSON.parse(ev.target.result);
+        if (!Array.isArray(songs)) throw new Error();
+        saveSongs(songs); renderSongList();
+        $('importFileInput').value = '';
+      } catch { /* invalid file — silently ignore */ }
+    };
+    reader.readAsText(file);
+  });
+
+  // COPY LINK
+  $('copyLinkBtn').addEventListener('click', () => {
+    const songs = loadSongs();
+    if (!songs.length) return;
+    const url = shareURL(songs);
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = $('copyLinkBtn');
+      btn.textContent = '✓ COPIED';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '🔗 LINK'; btn.classList.remove('copied'); }, 2000);
+    });
+  });
+
+  // QR CODE
+  $('qrBtn').addEventListener('click', () => {
+    const songs = loadSongs();
+    if (!songs.length) return;
+    const url = shareURL(songs);
+    const qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?data=' + encodeURIComponent(url) + '&size=220x220&ecc=L';
+    $('qrImg').src = qrApiUrl;
+    if (url.length > 2000) {
+      $('qrHint').textContent = 'Large setlist — QR may be dense. Use LINK instead if it won\'t scan.';
+    } else {
+      $('qrHint').textContent = 'Point your phone camera at this code.\nOr use LINK to share via message.';
+    }
+    $('qrOverlay').style.display = 'flex';
+  });
+  $('qrCloseBtn').addEventListener('click', () => { $('qrOverlay').style.display = 'none'; });
+  $('qrOverlay').addEventListener('click', e => { if (e.target === $('qrOverlay')) $('qrOverlay').style.display = 'none'; });
+
+  // URL IMPORT — check on load
+  let pendingImport = null;
+  const hash = location.hash;
+  if (hash.startsWith('#import=')) {
+    try {
+      pendingImport = decodeSetlist(hash.slice(8));
+      const banner = $('importBanner');
+      $('importBannerMsg').textContent = pendingImport.length + ' song' + (pendingImport.length !== 1 ? 's' : '') + ' found. Import and replace current setlist?';
+      banner.style.display = 'block';
+      history.replaceState(null, '', location.pathname); // clean URL
+    } catch { /* malformed — ignore */ }
+  }
+  $('importYesBtn').addEventListener('click', () => {
+    if (!pendingImport) return;
+    saveSongs(pendingImport); pendingImport = null;
+    $('importBanner').style.display = 'none';
+    renderSongList();
+  });
+  $('importNoBtn').addEventListener('click', () => {
+    pendingImport = null; $('importBanner').style.display = 'none';
+  });
 
   $('setlistHeader').addEventListener('click', () => $('setlistSection').classList.toggle('collapsed'));
   $('setlistAddBtn').addEventListener('click', () => openSongForm(null));
