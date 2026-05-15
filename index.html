@@ -396,31 +396,6 @@
   .sort-btn:active { background: #050505; }
   .sort-btn.active { border-color: var(--accent); color: var(--accent); }
 
-  .session-panel {
-    background: #0a1a0a; border: 1px solid #1a4a1a; border-radius: 12px;
-    padding: 14px; margin-bottom: 12px;
-  }
-  .session-song-name {
-    font-size: 15px; font-weight: 700; letter-spacing: 0.06em;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .session-song-meta { font-size: 10px; color: var(--dim); letter-spacing: 0.14em; margin-top: 2px; margin-bottom: 10px; }
-  .session-timer {
-    font-size: 52px; font-weight: 700; font-variant-numeric: tabular-nums;
-    color: var(--green); letter-spacing: -0.02em; text-align: center; line-height: 1;
-  }
-  .session-timer.urgent { color: var(--accent); }
-  .session-progress { height: 4px; background: var(--line); border-radius: 2px; margin: 8px 0 10px; overflow: hidden; }
-  .session-bar { height: 100%; background: var(--green); border-radius: 2px; transition: width 1s linear; }
-  .session-bar.urgent { background: var(--accent); }
-  .session-idx { font-size: 10px; color: var(--dim); letter-spacing: 0.14em; text-align: center; margin-bottom: 10px; }
-  .session-start-btn {
-    width: 100%; padding: 11px; margin-bottom: 10px;
-    background: linear-gradient(180deg,#1a3a1a,#0a1a0a); border: 1px solid #1a4a1a;
-    border-radius: 10px; color: var(--green); font-family: inherit;
-    font-size: 11px; letter-spacing: 0.2em; font-weight: 700; cursor: pointer;
-  }
-  .session-start-btn.active { background: linear-gradient(180deg,#2a2a2a,#141414); color: var(--dim); border-color: var(--line); }
   .song-action.delete { border-color: #4a1a1a; color: #884444; }
   .song-form { display: none; background: #0a0a0a; border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
   .song-form.visible { display: block; }
@@ -573,7 +548,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.3</div>
+    <div class="meta">v3.4</div>
   </header>
 
   <section class="display">
@@ -771,20 +746,6 @@
       </span>
     </h2>
     <div class="section-body">
-      <!-- Session panel -->
-      <div class="session-panel" id="sessionPanel" style="display:none;">
-        <div class="session-song-name" id="sessionSongName">—</div>
-        <div class="session-song-meta" id="sessionSongMeta">—</div>
-        <div class="session-timer" id="sessionTimer">0:00</div>
-        <div class="session-progress"><div class="session-bar" id="sessionBar" style="width:100%"></div></div>
-        <div class="session-idx" id="sessionIdx">—</div>
-        <div class="transport">
-          <button class="btn" id="sessionPauseBtn">PAUSE</button>
-          <button class="btn" id="sessionSkipBtn">SKIP →</button>
-        </div>
-      </div>
-      <button class="session-start-btn" id="sessionStartBtn">▶ START PRACTICE SESSION</button>
-      <div id="sessionMsg" style="display:none;font-size:10px;color:var(--accent-soft);letter-spacing:0.06em;text-align:center;padding:6px 0 2px;"></div>
       <!-- Gig resume banner -->
       <div class="gig-resume-banner" id="gigResumeBanner">
         <p id="gigResumeMsg">Gig in progress. Resume?</p>
@@ -2015,9 +1976,6 @@
     saveSongs(songs); renderSongList();
   });
 
-  // SESSION TIMER
-  const session = { active: false, songs: [], idx: 0, total: 0, left: 0, paused: false, tid: null };
-
   function fmtTime(s) { return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
 
   function loadSongIntoMetro(song) {
@@ -2026,64 +1984,6 @@
     if (mb) mb.click();
   }
 
-  function updateSessionUI() {
-    const song = session.songs[session.idx];
-    $('sessionSongName').textContent = song.title;
-    $('sessionSongMeta').textContent = song.key + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/');
-    $('sessionTimer').textContent = fmtTime(session.left);
-    $('sessionIdx').textContent = (session.idx + 1) + ' of ' + session.songs.length;
-    const pct = (session.left / session.total) * 100;
-    $('sessionBar').style.width = pct + '%';
-    const urgent = session.left <= 30;
-    $('sessionTimer').classList.toggle('urgent', urgent);
-    $('sessionBar').classList.toggle('urgent', urgent);
-    $('sessionPauseBtn').textContent = session.paused ? 'RESUME' : 'PAUSE';
-  }
-
-  function advanceSession() {
-    session.idx++;
-    if (session.idx >= session.songs.length) { endSession(); return; }
-    const song = session.songs[session.idx];
-    session.left = session.total = song.duration * 60;
-    loadSongIntoMetro(song);
-    updateSessionUI();
-  }
-
-  function endSession() {
-    clearInterval(session.tid);
-    session.active = false;
-    $('sessionPanel').style.display = 'none';
-    $('sessionStartBtn').textContent = '▶ START PRACTICE SESSION';
-    $('sessionStartBtn').classList.remove('active');
-  }
-
-  function startSession() {
-    const songs = loadSongs().filter(s => s.duration > 0);
-    if (!songs.length) {
-      const msg = $('sessionMsg');
-      msg.textContent = 'Add a MIN value to at least one song to start a session.';
-      msg.style.display = 'block';
-      setTimeout(() => { msg.style.display = 'none'; }, 3000);
-      return;
-    }
-    session.active = true; session.songs = songs; session.idx = 0; session.paused = false;
-    session.total = session.left = songs[0].duration * 60;
-    loadSongIntoMetro(songs[0]);
-    $('sessionPanel').style.display = 'block';
-    $('sessionStartBtn').textContent = '■ END SESSION';
-    $('sessionStartBtn').classList.add('active');
-    updateSessionUI();
-    session.tid = setInterval(() => {
-      if (session.paused) return;
-      session.left--;
-      if (session.left <= 0) advanceSession();
-      else updateSessionUI();
-    }, 1000);
-  }
-
-  $('sessionStartBtn').addEventListener('click', () => { if (session.active) endSession(); else startSession(); });
-  $('sessionPauseBtn').addEventListener('click', () => { session.paused = !session.paused; $('sessionPauseBtn').textContent = session.paused ? 'RESUME' : 'PAUSE'; });
-  $('sessionSkipBtn').addEventListener('click', advanceSession);
 
   // ENCODE / DECODE (handles Unicode)
   // Compact encoding: arrays instead of objects — ~60% smaller URL
