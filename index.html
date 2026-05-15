@@ -157,7 +157,7 @@
     border-radius: 14px; padding: 14px; box-shadow: var(--shadow);
   }
   .section h2 {
-    margin: 0; font-size: 11px; letter-spacing: 0.28em; color: var(--dim); font-weight: 600;
+    margin: 0; font-size: 11px; letter-spacing: 0.28em; color: #c0bbb3; font-weight: 600;
     display: flex; align-items: center; justify-content: space-between;
     cursor: pointer;
   }
@@ -360,6 +360,13 @@
   }
   .ear-answer.correct { background: #0a2010; border-color: var(--green); color: var(--green); }
   .ear-answer.wrong   { background: #200a0a; border-color: var(--accent); color: var(--accent); }
+  .ear-stats-panel { margin-top: 14px; }
+  .ear-stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .ear-stat-label { width: 64px; font-size: 10px; letter-spacing: 0.1em; color: var(--dim); flex-shrink: 0; }
+  .ear-stat-bar { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .ear-stat-fill { height: 100%; border-radius: 3px; background: var(--green); transition: width 0.3s; }
+  .ear-stat-fill.weak { background: var(--accent); }
+  .ear-stat-pct { width: 34px; text-align: right; font-size: 10px; color: var(--dim); }
 
 
   /* SETLIST */
@@ -569,7 +576,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.8</div>
+    <div class="meta">v3.9</div>
   </header>
 
   <section class="display">
@@ -746,12 +753,26 @@
       </div>
       <div class="ear-answers" id="earAnswers"></div>
       <div class="pill" style="margin-top:10px;">
+        <span class="k">MODE</span>
+        <div class="seg" id="earModeSeg">
+          <button data-mode="root" class="active">ROOT→DEG</button>
+          <button data-mode="any">DEG→DEG</button>
+        </div>
+      </div>
+      <div class="pill" style="margin-top:8px;">
         <span class="k">DIRECTION</span>
         <div class="seg" id="earDirSeg">
           <button data-dir="asc" class="active">UP</button>
           <button data-dir="desc">DOWN</button>
           <button data-dir="both">BOTH</button>
         </div>
+      </div>
+      <div class="ear-stats-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+          <span class="label-sm">DEGREE ACCURACY</span>
+          <button class="btn" id="earResetStats" style="font-size:9px;padding:0 8px;height:22px;letter-spacing:0.1em;">RESET</button>
+        </div>
+        <div id="earStatsGrid"></div>
       </div>
     </div>
   </section>
@@ -1782,7 +1803,32 @@
     { name: 'F',  freq: 174.61 }, { name: 'G',  freq: 196.00 },
   ];
 
-  const earState = { score: 0, total: 0, current: null, root: null, direction: 'asc', answered: false };
+  const earState = { score: 0, total: 0, current: null, root: null, fromDegree: null, direction: 'asc', mode: 'root', answered: false };
+  const ET_STATS_KEY = 'metro-buddy-ear-stats';
+  function loadEarStats() { try { return JSON.parse(localStorage.getItem(ET_STATS_KEY)) || {}; } catch { return {}; } }
+  function saveEarStats(s) { localStorage.setItem(ET_STATS_KEY, JSON.stringify(s)); }
+  let earStats = loadEarStats();
+  function recordEarStat(semitones, correct) {
+    if (!earStats[semitones]) earStats[semitones] = { correct: 0, total: 0 };
+    earStats[semitones].total++;
+    if (correct) earStats[semitones].correct++;
+    saveEarStats(earStats);
+    renderEarStats();
+  }
+  function renderEarStats() {
+    const el = $('earStatsGrid'); el.innerHTML = '';
+    intervals.forEach(iv => {
+      const s = earStats[iv.semitones];
+      const total = s ? s.total : 0;
+      const pct = total > 0 ? Math.round(s.correct / s.total * 100) : null;
+      const row = document.createElement('div');
+      row.className = 'ear-stat-row';
+      row.innerHTML = `<span class="ear-stat-label">${iv.name}</span>`
+        + `<div class="ear-stat-bar"><div class="ear-stat-fill${pct !== null && pct < 60 ? ' weak' : ''}" style="width:${pct ?? 0}%"></div></div>`
+        + `<span class="ear-stat-pct">${pct !== null ? pct + '%' : '—'}</span>`;
+      el.appendChild(row);
+    });
+  }
 
   async function resumeAudio() {
     ensureAudio();
@@ -1812,19 +1858,36 @@
   function playCurrentInterval() {
     const now = audioCtx.currentTime + 0.1;
     const rf = earState.root.freq;
-    const ivf = rf * Math.pow(2, earState.current.semitones / 12);
-    let a = rf, b = ivf;
-    if (earState.direction === 'desc') { a = ivf; b = rf; }
-    else if (earState.direction === 'both' && Math.random() < 0.5) { a = ivf; b = rf; }
+    let a, b;
+    if (earState.mode === 'any' && earState.fromDegree) {
+      a = rf * Math.pow(2, earState.fromDegree.semitones / 12);
+      b = rf * Math.pow(2, earState.current.semitones / 12);
+      if (b <= a) b *= 2;
+    } else {
+      a = rf;
+      b = rf * Math.pow(2, earState.current.semitones / 12);
+    }
+    if (earState.direction === 'desc') { [a, b] = [b, a]; }
+    else if (earState.direction === 'both' && Math.random() < 0.5) { [a, b] = [b, a]; }
     playBassNote(a, now, 0.7);
     playBassNote(b, now + 0.85, 0.7);
   }
 
   function newEarQuestion() {
     earState.root = earRoots[Math.floor(Math.random() * earRoots.length)];
-    earState.current = intervals[Math.floor(Math.random() * intervals.length)];
+    if (earState.mode === 'any') {
+      const fromIdx = Math.floor(Math.random() * intervals.length);
+      let toIdx;
+      do { toIdx = Math.floor(Math.random() * intervals.length); } while (toIdx === fromIdx);
+      earState.fromDegree = intervals[fromIdx];
+      earState.current = intervals[toIdx];
+      $('earRoot').textContent = 'FROM · ' + earState.fromDegree.name;
+    } else {
+      earState.fromDegree = null;
+      earState.current = intervals[Math.floor(Math.random() * intervals.length)];
+      $('earRoot').textContent = 'ROOT · ' + earState.root.name;
+    }
     earState.answered = false;
-    $('earRoot').textContent = 'ROOT · ' + earState.root.name;
     $('earStatus').textContent = 'WHICH DEGREE?';
     $('earStatus').className = 'ear-status';
     document.querySelectorAll('.ear-answer').forEach(b => {
@@ -1847,6 +1910,7 @@
           document.querySelectorAll('.ear-answer').forEach(x => { if (+x.dataset.semi === earState.current.semitones) x.classList.add('correct'); });
           $('earStatus').textContent = earState.current.name; $('earStatus').className = 'ear-status wrong';
         }
+        recordEarStat(earState.current.semitones, ok);
         document.querySelectorAll('.ear-answer').forEach(x => x.disabled = true);
         $('earScore').textContent = earState.score + ' / ' + earState.total;
         setTimeout(newEarQuestion, 1600);
@@ -1863,7 +1927,16 @@
     document.querySelectorAll('#earDirSeg button').forEach(x => x.classList.remove('active'));
     b.classList.add('active'); earState.direction = b.dataset.dir;
   });
-  buildEarAnswers(); newEarQuestion();
+  $('earModeSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#earModeSeg button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); earState.mode = b.dataset.mode;
+    newEarQuestion();
+  });
+  $('earResetStats').addEventListener('click', () => {
+    earStats = {}; saveEarStats(earStats); renderEarStats();
+  });
+  buildEarAnswers(); newEarQuestion(); renderEarStats();
 
 
   /* ============================================================
