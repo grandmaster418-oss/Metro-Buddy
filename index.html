@@ -573,7 +573,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.2</div>
+    <div class="meta">v3.3</div>
   </header>
 
   <section class="display">
@@ -2086,11 +2086,27 @@
   $('sessionSkipBtn').addEventListener('click', advanceSession);
 
   // ENCODE / DECODE (handles Unicode)
+  // Compact encoding: arrays instead of objects — ~60% smaller URL
   function encodeSetlist(songs) {
-    return btoa(unescape(encodeURIComponent(JSON.stringify(songs))));
+    const c = songs.map(s => [
+      s.id, s.title, s.key, s.bpm, s.timeSig, s.duration || 0,
+      (s.sections || []).map(sec => [sec.type, sec.seconds || 0]),
+      s.notes || ''
+    ]);
+    return btoa(unescape(encodeURIComponent(JSON.stringify(c))));
   }
   function decodeSetlist(str) {
-    return JSON.parse(decodeURIComponent(escape(atob(str))));
+    const data = JSON.parse(decodeURIComponent(escape(atob(str))));
+    // Compact format: first element is an array (not object)
+    if (Array.isArray(data[0])) {
+      return data.map(s => ({
+        id: s[0], title: s[1], key: s[2], bpm: s[3],
+        timeSig: s[4], duration: s[5],
+        sections: (s[6] || []).map(sec => ({ type: sec[0], seconds: sec[1] })),
+        notes: s[7] || ''
+      }));
+    }
+    return data; // legacy format
   }
   function shareURL(songs) {
     const base = location.origin + location.pathname;
