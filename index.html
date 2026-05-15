@@ -854,8 +854,8 @@
         <button class="gig-btn" id="gigNextSecBtn">NEXT ▶</button>
       </div>
       <div class="gig-nudge-row">
-        <button class="gig-nudge" id="gigRewindBtn">⏮ −1 BAR</button>
-        <button class="gig-nudge" id="gigFwdBtn">+1 BAR ⏭</button>
+        <button class="gig-nudge" id="gigRewindBtn">⏮ −1 BEAT</button>
+        <button class="gig-nudge" id="gigFwdBtn">+1 BEAT ⏭</button>
       </div>
       <button class="gig-next-song" id="gigNextSongBtn">NEXT SONG →</button>
     </div>
@@ -2277,18 +2277,16 @@
     setTimeout(() => el.classList.remove('flash'), 400);
   }
 
-  function gigBarSecs() {
-    const song = gig.songs[gig.songIdx];
-    const meter = song.timeSig || '4-4';
-    return Math.round(meter === '6-8' ? 180 / song.bpm : 240 / song.bpm);
+  function gigBeatSecs() {
+    return Math.max(1, Math.round(60 / gig.songs[gig.songIdx].bpm));
   }
 
   $('gigRewindBtn').addEventListener('click', () => {
-    gig.secondsLeft = Math.min(gig.totalSec, gig.secondsLeft + gigBarSecs());
+    gig.secondsLeft = Math.min(gig.totalSec, gig.secondsLeft + gigBeatSecs());
     updateGigTimerOnly();
   });
   $('gigFwdBtn').addEventListener('click', () => {
-    gig.secondsLeft = Math.max(1, gig.secondsLeft - gigBarSecs());
+    gig.secondsLeft = Math.max(1, gig.secondsLeft - gigBeatSecs());
     updateGigTimerOnly();
   });
 
