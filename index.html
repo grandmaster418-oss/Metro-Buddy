@@ -361,12 +361,16 @@
   .ear-answer.correct { background: #0a2010; border-color: var(--green); color: var(--green); }
   .ear-answer.wrong   { background: #200a0a; border-color: var(--accent); color: var(--accent); }
   .ear-stats-panel { margin-top: 14px; }
-  .ear-stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .ear-stat-label { width: 64px; font-size: 10px; letter-spacing: 0.1em; color: var(--dim); flex-shrink: 0; }
-  .ear-stat-bar { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
-  .ear-stat-fill { height: 100%; border-radius: 3px; background: var(--green); transition: width 0.3s; }
-  .ear-stat-fill.weak { background: var(--accent); }
-  .ear-stat-pct { width: 34px; text-align: right; font-size: 10px; color: var(--dim); }
+  .ear-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .ear-stat-cell {
+    background: #0a0a0a; border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 5px; text-align: center;
+  }
+  .ear-stat-cell .esd { font-size: 11px; letter-spacing: 0.1em; color: var(--dim); margin-bottom: 3px; }
+  .ear-stat-cell .esp { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .ear-stat-cell .esn { font-size: 9px; color: var(--dim); margin-top: 1px; }
+  .ear-stat-cell.good .esp { color: var(--green); }
+  .ear-stat-cell.bad  .esp { color: var(--accent); }
 
 
   /* SETLIST */
@@ -576,7 +580,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.9</div>
+    <div class="meta">v3.10</div>
   </header>
 
   <section class="display">
@@ -772,7 +776,7 @@
           <span class="label-sm">DEGREE ACCURACY</span>
           <button class="btn" id="earResetStats" style="font-size:9px;padding:0 8px;height:22px;letter-spacing:0.1em;">RESET</button>
         </div>
-        <div id="earStatsGrid"></div>
+        <div class="ear-stat-grid" id="earStatsGrid"></div>
       </div>
     </div>
   </section>
@@ -1816,17 +1820,20 @@
     renderEarStats();
   }
   function renderEarStats() {
-    const el = $('earStatsGrid'); el.innerHTML = '';
+    const el = $('earStatsGrid');
+    if (!el) return;
+    el.innerHTML = '';
     intervals.forEach(iv => {
       const s = earStats[iv.semitones];
       const total = s ? s.total : 0;
-      const pct = total > 0 ? Math.round(s.correct / s.total * 100) : null;
-      const row = document.createElement('div');
-      row.className = 'ear-stat-row';
-      row.innerHTML = `<span class="ear-stat-label">${iv.name}</span>`
-        + `<div class="ear-stat-bar"><div class="ear-stat-fill${pct !== null && pct < 60 ? ' weak' : ''}" style="width:${pct ?? 0}%"></div></div>`
-        + `<span class="ear-stat-pct">${pct !== null ? pct + '%' : '—'}</span>`;
-      el.appendChild(row);
+      const correct = s ? s.correct : 0;
+      const pct = total > 0 ? Math.round(correct / total * 100) : null;
+      const cell = document.createElement('div');
+      cell.className = 'ear-stat-cell' + (pct !== null ? (pct >= 70 ? ' good' : ' bad') : '');
+      cell.innerHTML = `<div class="esd">${iv.name}</div>`
+        + `<div class="esp">${pct !== null ? pct + '%' : '—'}</div>`
+        + `<div class="esn">${total > 0 ? correct + '/' + total : 'no data'}</div>`;
+      el.appendChild(cell);
     });
   }
 
