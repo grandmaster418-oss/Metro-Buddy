@@ -434,7 +434,7 @@
   .form-input:focus, .section-type-sel:focus { outline: none; border-color: var(--accent); }
   .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
   .section-header-row,
-  .section-row { display: grid; grid-template-columns: 80px 1fr 28px; gap: 5px; margin-bottom: 5px; }
+  .section-row { display: grid; grid-template-columns: 72px 1fr 1fr 28px; gap: 5px; margin-bottom: 5px; }
   .section-num {
     padding: 6px 5px; background: #050505; border: 1px solid var(--line);
     border-radius: 4px; color: var(--ink); font-family: inherit; font-size: 11px;
@@ -452,39 +452,6 @@
   }
   .form-actions { display: flex; gap: 8px; margin-top: 12px; }
   .form-actions .btn { height: 44px; font-size: 11px; }
-
-  /* TAP TIMING RECORDER */
-  .tap-overlay {
-    position: fixed; inset: 0; z-index: 350; background: #050505;
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: space-between; padding: 32px 20px 36px;
-  }
-  .tap-title { font-size: 11px; letter-spacing: 0.24em; color: var(--dim); }
-  .tap-section-list { width: 100%; max-width: 320px; }
-  .tap-section-item {
-    padding: 9px 14px; font-size: 13px; letter-spacing: 0.14em;
-    color: var(--dim); border-radius: 8px; margin-bottom: 5px;
-    border: 1px solid transparent;
-  }
-  .tap-section-item.current {
-    background: #1a1a08; color: var(--target);
-    border-color: var(--target); font-weight: 700;
-  }
-  .tap-section-item.done { color: var(--green); }
-  .tap-progress {
-    font-size: 13px; letter-spacing: 0.14em; color: var(--ink);
-    text-align: center; min-height: 20px;
-  }
-  .tap-btn {
-    width: 170px; height: 170px; border-radius: 50%;
-    background: linear-gradient(180deg, var(--accent), #c83f0e);
-    border: none; color: #1a0a02; font-family: inherit;
-    font-size: 16px; font-weight: 700; letter-spacing: 0.2em;
-    cursor: pointer; box-shadow: 0 0 50px rgba(255,91,31,0.25);
-    transition: transform 0.06s ease, box-shadow 0.06s ease;
-  }
-  .tap-btn:active { transform: scale(0.93); box-shadow: 0 0 20px rgba(255,91,31,0.4); }
-  .tap-btn.flashed { background: linear-gradient(180deg, #fff, #ddd); color: #000; }
 
   /* GIG MODE */
   .gig-overlay {
@@ -520,7 +487,7 @@
   .gig-progress { width: 100%; max-width: 320px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin: 10px 0; }
   .gig-progress-bar { height: 100%; background: var(--green); border-radius: 2px; transition: width 1s linear; }
   .gig-progress-bar.urgent { background: var(--accent); }
-  .gig-next-label { font-size: 12px; letter-spacing: 0.16em; color: var(--dim); min-height: 18px; margin-top: 4px; }
+  .gig-next-label { font-size: 36px; font-weight: 700; letter-spacing: 0.06em; color: var(--dim); min-height: 44px; margin-top: 8px; }
   .gig-dots { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
   .gig-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); transition: background 0.2s; }
   .gig-dot.done { background: var(--dim); }
@@ -599,7 +566,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v2.7</div>
+    <div class="meta">v2.8</div>
   </header>
 
   <section class="display">
@@ -873,12 +840,12 @@
           <div class="form-label" style="margin-bottom:6px;">STRUCTURE</div>
           <div class="section-header-row">
             <div class="form-label">TYPE</div>
-            <div class="form-label">SECONDS</div>
+            <div class="form-label">BARS</div>
+            <div class="form-label">SEC</div>
             <div></div>
           </div>
           <div id="sectionRows"></div>
           <button class="add-section-btn" id="addSectionRowBtn">+ ADD SECTION</button>
-          <button class="add-section-btn" id="recordTimingBtn" style="margin-top:5px;border-color:var(--accent);color:var(--accent);">⏺ RECORD TIMING</button>
         </div>
         <div class="form-field" style="margin-top:10px;">
           <label class="form-label">PRACTICE NOTES</label>
@@ -892,15 +859,6 @@
       <div id="songList"></div>
     </div>
   </section>
-
-  <!-- TAP TIMING OVERLAY -->
-  <div class="tap-overlay" id="tapTimingOverlay" style="display:none;">
-    <div class="tap-title">⏺ TAP TIMING RECORDER</div>
-    <div class="tap-section-list" id="tapSectionList"></div>
-    <div class="tap-progress" id="tapProgress">—</div>
-    <button class="tap-btn" id="tapTimingBtn">TAP</button>
-    <button class="btn" style="width:100%;max-width:320px;" id="tapCancelBtn">CANCEL</button>
-  </div>
 
   <!-- GIG MODE OVERLAY -->
   <div class="gig-overlay" id="gigOverlay" style="display:none;">
@@ -1989,14 +1947,27 @@
     initSortable(el);
   }
 
+  function barsToSec(bars) {
+    const bpm = +$('formBpm').value || 120;
+    const meter = $('formMeter').value;
+    const barDur = meter === '6-8' ? (180 / bpm) : (240 / bpm);
+    return Math.max(1, Math.round(bars * barDur));
+  }
+
   function makeSectionRow(sec) {
     const row = document.createElement('div'); row.className = 'section-row';
-    const secs = sec ? (sec.seconds || (sec.bars ? sec.bars * 4 : '')) : '';
+    const bars = sec && sec.bars ? sec.bars : '';
+    const secs = sec ? (sec.seconds || (sec.bars ? barsToSec(sec.bars) : '')) : '';
     row.innerHTML =
       '<select class="section-type-sel">' + SEC_TYPES.map(t => '<option value="' + t + '"' + (sec && sec.type===t?' selected':'') + '>' + t + '</option>').join('') + '</select>' +
-      '<input class="section-num" type="number" placeholder="sec" min="1" max="999" value="' + secs + '" />' +
+      '<input class="section-num bars-in" type="number" placeholder="bars" min="1" max="999" value="' + bars + '" />' +
+      '<input class="section-num secs-in" type="number" placeholder="sec" min="1" max="9999" value="' + secs + '" />' +
       '<button class="section-remove">✕</button>';
     row.querySelector('.section-remove').addEventListener('click', () => row.remove());
+    row.querySelector('.bars-in').addEventListener('input', e => {
+      const b = +e.target.value;
+      if (b > 0) row.querySelector('.secs-in').value = barsToSec(b);
+    });
     return row;
   }
 
@@ -2364,73 +2335,23 @@
   $('formCancelBtn').addEventListener('click', closeSongForm);
   $('addSectionRowBtn').addEventListener('click', () => $('sectionRows').appendChild(makeSectionRow(null)));
 
-  /* ============================================================
-     TAP TIMING RECORDER
-  ============================================================ */
-  const tapState = { sections: [], timestamps: [] };
-
-  function startTimingRecord() {
-    const rows = $('sectionRows').querySelectorAll('.section-row');
-    if (!rows.length) return;
-    tapState.sections = [...rows].map(r => r.querySelector('select').value);
-    tapState.timestamps = [];
-    const list = $('tapSectionList'); list.innerHTML = '';
-    tapState.sections.forEach((type, i) => {
-      const d = document.createElement('div');
-      d.className = 'tap-section-item' + (i === 0 ? ' current' : '');
-      d.textContent = type.toUpperCase();
-      list.appendChild(d);
+  function recalcAllBars() {
+    $('sectionRows').querySelectorAll('.section-row').forEach(row => {
+      const b = +row.querySelector('.bars-in').value;
+      if (b > 0) row.querySelector('.secs-in').value = barsToSec(b);
     });
-    $('tapProgress').textContent = 'TAP WHEN ' + tapState.sections[0].toUpperCase() + ' STARTS';
-    $('tapTimingBtn').textContent = 'TAP';
-    $('tapTimingOverlay').style.display = 'flex';
   }
+  $('formBpm').addEventListener('input', recalcAllBars);
+  $('formMeter').addEventListener('change', recalcAllBars);
 
-  function handleTimingTap() {
-    tapState.timestamps.push(performance.now());
-    const count = tapState.timestamps.length;
-    const N = tapState.sections.length;
-    const items = $('tapSectionList').querySelectorAll('.tap-section-item');
-
-    // flash feedback
-    const btn = $('tapTimingBtn');
-    btn.classList.add('flashed');
-    setTimeout(() => btn.classList.remove('flashed'), 120);
-
-    if (count <= N) {
-      items[count - 1].className = 'tap-section-item done';
-      if (count < N) {
-        items[count].className = 'tap-section-item current';
-        $('tapProgress').textContent = 'TAP WHEN ' + tapState.sections[count].toUpperCase() + ' STARTS';
-      } else {
-        $('tapProgress').textContent = 'TAP WHEN SONG ENDS';
-        btn.textContent = 'END';
-      }
-    } else {
-      // Final tap — calculate and apply
-      const rows = $('sectionRows').querySelectorAll('.section-row');
-      rows.forEach((row, i) => {
-        const input = row.querySelector('input[type="number"]');
-        if (input && tapState.timestamps[i + 1]) {
-          input.value = Math.max(1, Math.round((tapState.timestamps[i + 1] - tapState.timestamps[i]) / 1000));
-        }
-      });
-      $('tapTimingOverlay').style.display = 'none';
-    }
-  }
-
-  $('recordTimingBtn').addEventListener('click', () => {
-    if ($('sectionRows').querySelectorAll('.section-row').length === 0) return;
-    startTimingRecord();
-  });
-  $('tapTimingBtn').addEventListener('click', handleTimingTap);
-  $('tapCancelBtn').addEventListener('click', () => { $('tapTimingOverlay').style.display = 'none'; });
   $('formSaveBtn').addEventListener('click', () => {
     const title = $('formTitle').value.trim(); if (!title) { $('formTitle').focus(); return; }
     const sections = [];
     $('sectionRows').querySelectorAll('.section-row').forEach(row => {
-      const inputs = row.querySelectorAll('select, input[type="number"]');
-      sections.push({ type: inputs[0].value, seconds: +inputs[1].value || 30 });
+      const type = row.querySelector('select').value;
+      const bars = +row.querySelector('.bars-in').value || 0;
+      const secs = +row.querySelector('.secs-in').value || 30;
+      sections.push({ type, bars, seconds: secs });
     });
     const songs = loadSongs();
     const entry = { id: editingId || Date.now(), title, key: $('formKey').value.trim() || '?', bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, duration: +$('formDuration').value || 0, sections, notes: $('formNotes').value.trim() };
