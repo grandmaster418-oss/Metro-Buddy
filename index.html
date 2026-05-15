@@ -2141,28 +2141,28 @@
     const songs = loadSongs();
     if (!songs.length) return;
     const url = shareURL(songs);
-    // Mobile: native share is far more reliable than QR
-    if (navigator.share) {
-      navigator.share({ title: 'Metro Buddy Setlist', url }).catch(() => {});
-      return;
-    }
-    // Desktop: generate QR client-side
     const canvas = $('qrCanvas');
     if (typeof QRCode !== 'undefined') {
       QRCode.toCanvas(canvas, url, { width: 220, margin: 1, errorCorrectionLevel: 'L',
         color: { dark: '#000000', light: '#ffffff' } }, err => {
-        $('qrHint').textContent = err ? 'QR failed — use LINK button instead.' : 'Point your phone camera at this code.';
+        $('qrHint').textContent = err ? 'QR failed — use SHARE button below.' : 'Scan with your phone camera.';
       });
     } else {
-      // Library not loaded — show hint only
       const ctx = canvas.getContext('2d');
       canvas.width = 220; canvas.height = 60;
       ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0,220,60);
       ctx.fillStyle = '#7a766e'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
-      ctx.fillText('Use LINK button to share', 110, 35);
+      ctx.fillText('Use SHARE button below', 110, 35);
       $('qrHint').textContent = 'QR library not loaded.';
     }
-    $('qrShareBtn').style.display = 'none';
+    // Always show share button if available
+    const shareBtn = $('qrShareBtn');
+    if (navigator.share) {
+      shareBtn.style.display = 'block';
+      shareBtn.onclick = () => navigator.share({ title: 'Metro Buddy Setlist', url }).catch(() => {});
+    } else {
+      shareBtn.style.display = 'none';
+    }
     $('qrOverlay').style.display = 'flex';
   });
   $('qrCloseBtn').addEventListener('click', () => { $('qrOverlay').style.display = 'none'; });
