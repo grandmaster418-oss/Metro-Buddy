@@ -599,7 +599,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v2.6</div>
+    <div class="meta">v2.7</div>
   </header>
 
   <section class="display">
@@ -832,7 +832,7 @@
         <button class="share-btn" id="exportBtn">⬇ EXPORT</button>
         <button class="share-btn" id="importFileBtn">⬆ IMPORT</button>
         <button class="share-btn" id="copyLinkBtn">🔗 LINK</button>
-        <button class="share-btn" id="qrBtn">⬛ QR</button>
+        <button class="share-btn" id="qrBtn">⬛ QR / SHARE</button>
       </div>
       <input type="file" id="importFileInput" accept=".json" style="display:none;">
       <!-- Sort row -->
@@ -2156,25 +2156,33 @@
     });
   });
 
-  // QR CODE
+  // QR / SHARE — mobile uses native share sheet, desktop shows QR
   $('qrBtn').addEventListener('click', () => {
     const songs = loadSongs();
     if (!songs.length) return;
     const url = shareURL(songs);
-    const canvas = $('qrCanvas');
-    QRCode.toCanvas(canvas, url, { width: 220, margin: 1, errorCorrectionLevel: 'L',
-      color: { dark: '#000000', light: '#ffffff' } }, err => {
-      if (err) { $('qrHint').textContent = 'QR generation failed — use LINK instead.'; }
-      else { $('qrHint').textContent = 'Point your phone camera at this code.'; }
-    });
-    // Show native share button on mobile
-    const shareBtn = $('qrShareBtn');
+    // Mobile: native share is far more reliable than QR
     if (navigator.share) {
-      shareBtn.style.display = 'block';
-      shareBtn.onclick = () => navigator.share({ title: 'Metro Buddy Setlist', url });
-    } else {
-      shareBtn.style.display = 'none';
+      navigator.share({ title: 'Metro Buddy Setlist', url }).catch(() => {});
+      return;
     }
+    // Desktop: generate QR client-side
+    const canvas = $('qrCanvas');
+    if (typeof QRCode !== 'undefined') {
+      QRCode.toCanvas(canvas, url, { width: 220, margin: 1, errorCorrectionLevel: 'L',
+        color: { dark: '#000000', light: '#ffffff' } }, err => {
+        $('qrHint').textContent = err ? 'QR failed — use LINK button instead.' : 'Point your phone camera at this code.';
+      });
+    } else {
+      // Library not loaded — show hint only
+      const ctx = canvas.getContext('2d');
+      canvas.width = 220; canvas.height = 60;
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0,220,60);
+      ctx.fillStyle = '#7a766e'; ctx.font = '11px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('Use LINK button to share', 110, 35);
+      $('qrHint').textContent = 'QR library not loaded.';
+    }
+    $('qrShareBtn').style.display = 'none';
     $('qrOverlay').style.display = 'flex';
   });
   $('qrCloseBtn').addEventListener('click', () => { $('qrOverlay').style.display = 'none'; });

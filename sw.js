@@ -1,7 +1,7 @@
 /* Metro Buddy — service worker
    Cache-first with version-busting. Bump CACHE_VERSION to force refresh. */
 
-const CACHE_VERSION = ‘metro-buddy-v2.6’;
+const CACHE_VERSION = ‘metro-buddy-v2.7’;
 const ASSETS = [
   ‘./’,
   ‘./index.html’,
@@ -9,7 +9,6 @@ const ASSETS = [
   ‘./icon-192.png’,
   ‘./icon-512.png’,
   ‘./icon-maskable-512.png’,
-  ‘https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js’,
 ];
 
 self.addEventListener(‘install’, (e) => {
