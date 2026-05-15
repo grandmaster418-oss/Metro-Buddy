@@ -2132,9 +2132,12 @@
     const reader = new FileReader();
     reader.onload = ev => {
       try {
-        const songs = JSON.parse(ev.target.result);
-        if (!Array.isArray(songs)) throw new Error();
-        saveSongs(songs); renderSongList();
+        const imported = JSON.parse(ev.target.result);
+        if (!Array.isArray(imported)) throw new Error();
+        const existing = loadSongs();
+        const existingIds = new Set(existing.map(s => s.id));
+        const newSongs = imported.filter(s => !existingIds.has(s.id));
+        saveSongs([...existing, ...newSongs]); renderSongList();
         $('importFileInput').value = '';
       } catch { /* invalid file — silently ignore */ }
     };
@@ -2195,15 +2198,24 @@
   if (hash.startsWith('#import=')) {
     try {
       pendingImport = decodeSetlist(hash.slice(8));
+      const existing = loadSongs();
+      const existingIds = new Set(existing.map(s => s.id));
+      const newSongs = pendingImport.filter(s => !existingIds.has(s.id));
       const banner = $('importBanner');
-      $('importBannerMsg').textContent = pendingImport.length + ' song' + (pendingImport.length !== 1 ? 's' : '') + ' found. Import and replace current setlist?';
+      if (newSongs.length === 0) {
+        $('importBannerMsg').textContent = 'All ' + pendingImport.length + ' songs already in your setlist.';
+      } else {
+        $('importBannerMsg').textContent = newSongs.length + ' new song' + (newSongs.length !== 1 ? 's' : '') + ' found' + (pendingImport.length - newSongs.length > 0 ? ' (' + (pendingImport.length - newSongs.length) + ' already in setlist, skipped)' : '') + '. Add them?';
+      }
+      pendingImport = newSongs;
       banner.style.display = 'block';
       history.replaceState(null, '', location.pathname); // clean URL
     } catch { /* malformed — ignore */ }
   }
   $('importYesBtn').addEventListener('click', () => {
     if (!pendingImport) return;
-    saveSongs(pendingImport); pendingImport = null;
+    saveSongs([...loadSongs(), ...pendingImport]);
+    pendingImport = null;
     $('importBanner').style.display = 'none';
     renderSongList();
   });
