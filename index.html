@@ -580,7 +580,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.11</div>
+    <div class="meta">v3.12</div>
   </header>
 
   <section class="display">
@@ -1951,13 +1951,27 @@
     });
   }
 
+  function playDegreeFromRoot(semitones) {
+    const now = audioCtx.currentTime + 0.1;
+    const rf = earState.root.freq;
+    let a = rf, b = rf * Math.pow(2, semitones / 12);
+    if (earState.mode === 'any' && earState.fromDegree) {
+      a = rf * Math.pow(2, earState.fromDegree.semitones / 12);
+      if (b <= a) b *= 2;
+    }
+    playBassNote(a, now, 0.5);
+    playBassNote(b, now + 0.6, 0.5);
+  }
+
   function buildEarAnswers() {
     const el = $('earAnswers'); el.innerHTML = '';
     earDegrees().forEach(iv => {
       const b = document.createElement('button');
       b.className = 'ear-answer'; b.textContent = iv.name; b.dataset.semi = iv.semitones;
-      b.addEventListener('click', () => {
+      b.addEventListener('click', async () => {
         if (earState.answered) return;
+        await resumeAudio();
+        playDegreeFromRoot(iv.semitones);
         earState.answered = true; earState.total++;
         const ok = iv.semitones === earState.current.semitones;
         if (ok) { earState.score++; b.classList.add('correct'); $('earStatus').textContent = '✓ ' + iv.name; $('earStatus').className = 'ear-status correct'; }
@@ -1969,7 +1983,7 @@
         recordEarStat(earState.current.semitones, ok);
         document.querySelectorAll('.ear-answer').forEach(x => x.disabled = true);
         $('earScore').textContent = earState.score + ' / ' + earState.total;
-        setTimeout(newEarQuestion, 1600);
+        setTimeout(newEarQuestion, 1800);
       });
       el.appendChild(b);
     });
