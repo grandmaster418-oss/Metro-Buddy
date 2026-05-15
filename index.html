@@ -573,7 +573,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v2.9</div>
+    <div class="meta">v3.0</div>
   </header>
 
   <section class="display">
@@ -1410,12 +1410,6 @@
         setTimeout(() => all[beatIdx] && all[beatIdx].classList.remove('active'), 90);
       }
     }
-    // Flash gig beat dot on beat 1
-    if (gig.active && stepIndex === 0) {
-      const dot = $('gigBeatDot');
-      dot.classList.add('flash');
-      setTimeout(() => dot.classList.remove('flash'), 120);
-    }
   }
 
   function buildPresetRow() {
@@ -2215,13 +2209,27 @@
     flashGigSection();
   }
 
+  let gigDotTid = null;
+  function startGigDot(bpm) {
+    stopGigDot();
+    const ms = (60 / bpm) * 1000;
+    const flash = () => {
+      const dot = $('gigBeatDot');
+      dot.classList.add('flash');
+      setTimeout(() => dot.classList.remove('flash'), 100);
+    };
+    flash();
+    gigDotTid = setInterval(flash, ms);
+  }
+  function stopGigDot() { if (gigDotTid) { clearInterval(gigDotTid); gigDotTid = null; } }
+
   function startGig(songs, fromIdx) {
     if (!songs[fromIdx] || !songs[fromIdx].sections || !songs[fromIdx].sections.length) return;
     clearInterval(gig.tid);
     gig.songs = songs; gig.songIdx = fromIdx; gig.sectionIdx = 0; gig.paused = true; gig.active = true;
     gig.totalSec = gig.secondsLeft = secDur(songs[fromIdx].sections[0]);
     loadSongIntoMetro(songs[fromIdx]);
-    if (!state.playing) start(); // ensure metronome is running for beat dot
+    startGigDot(songs[fromIdx].bpm);
     $('gigPauseBtn').textContent = 'RESUME';
     $('gigSyncHint').style.display = 'block';
     $('gigOverlay').style.display = 'flex';
@@ -2283,7 +2291,7 @@
   }
 
   function endGig() {
-    clearInterval(gig.tid); gig.active = false;
+    clearInterval(gig.tid); stopGigDot(); gig.active = false;
     clearGigState(); $('gigOverlay').style.display = 'none';
   }
 
@@ -2327,8 +2335,13 @@
   $('gigPauseBtn').addEventListener('click', () => {
     gig.paused = !gig.paused;
     $('gigPauseBtn').textContent = gig.paused ? 'RESUME' : 'PAUSE';
-    if (!gig.paused) $('gigSyncHint').style.display = 'none';
-    else $('gigSyncHint').style.display = 'block';
+    if (!gig.paused) {
+      stopGigDot();
+      $('gigSyncHint').style.display = 'none';
+    } else {
+      startGigDot(gig.songs[gig.songIdx].bpm);
+      $('gigSyncHint').style.display = 'block';
+    }
   });
   $('gigNextSecBtn').addEventListener('click', () => gigNextSection(false));
   $('gigNextSongBtn').addEventListener('click', gigNextSong);
