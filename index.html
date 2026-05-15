@@ -569,7 +569,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.7</div>
+    <div class="meta">v3.8</div>
   </header>
 
   <section class="display">
@@ -2339,11 +2339,11 @@
     const beatsPerBar = (song && song.timeSig === '6-8') ? 6 : 4;
     gigDotBeat = 0;
     const flash = () => {
-      const dot = $('gigBeatDot');
-      const isOne = gigDotBeat === 0;
-      dot.classList.remove('flash', 'flash-one');
-      dot.classList.add(isOne ? 'flash-one' : 'flash');
-      setTimeout(() => { dot.classList.remove('flash', 'flash-one'); }, 120);
+      if (gigDotBeat === 0) {
+        const dot = $('gigBeatDot');
+        dot.classList.add('flash-one');
+        setTimeout(() => dot.classList.remove('flash-one'), 120);
+      }
       gigDotBeat = (gigDotBeat + 1) % beatsPerBar;
     };
     flash();
