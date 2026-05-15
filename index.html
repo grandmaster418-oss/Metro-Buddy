@@ -475,7 +475,9 @@
   .gig-dot.done { background: var(--dim); }
   .gig-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
   .gig-bottom { padding: 14px 20px 28px; border-top: 1px solid var(--line); flex-shrink: 0; }
-  .gig-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .gig-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+  .gig-nudge-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .gig-nudge { height: 42px; border-radius: 10px; border: 1px solid var(--line); background: #0a0a0a; color: var(--dim); font-family: inherit; font-size: 10px; letter-spacing: 0.14em; cursor: pointer; }
   .gig-btn {
     height: 54px; border-radius: 12px; border: 1px solid var(--line);
     background: #0a0a0a; color: var(--ink); font-family: inherit;
@@ -548,7 +550,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.4</div>
+    <div class="meta">v3.5</div>
   </header>
 
   <section class="display">
@@ -850,6 +852,10 @@
         <button class="gig-btn" id="gigPrevBtn">◀ PREV</button>
         <button class="gig-btn" id="gigPauseBtn">PAUSE</button>
         <button class="gig-btn" id="gigNextSecBtn">NEXT ▶</button>
+      </div>
+      <div class="gig-nudge-row">
+        <button class="gig-nudge" id="gigRewindBtn">⏮ −1 BAR</button>
+        <button class="gig-nudge" id="gigFwdBtn">+1 BAR ⏭</button>
       </div>
       <button class="gig-next-song" id="gigNextSongBtn">NEXT SONG →</button>
     </div>
@@ -2270,6 +2276,21 @@
     const el = $('gigSectionName'); el.classList.add('flash');
     setTimeout(() => el.classList.remove('flash'), 400);
   }
+
+  function gigBarSecs() {
+    const song = gig.songs[gig.songIdx];
+    const meter = song.timeSig || '4-4';
+    return Math.round(meter === '6-8' ? 180 / song.bpm : 240 / song.bpm);
+  }
+
+  $('gigRewindBtn').addEventListener('click', () => {
+    gig.secondsLeft = Math.min(gig.totalSec, gig.secondsLeft + gigBarSecs());
+    updateGigTimerOnly();
+  });
+  $('gigFwdBtn').addEventListener('click', () => {
+    gig.secondsLeft = Math.max(1, gig.secondsLeft - gigBarSecs());
+    updateGigTimerOnly();
+  });
 
   $('gigPrevBtn').addEventListener('click', gigPrevSection);
   $('gigPauseBtn').addEventListener('click', () => {
