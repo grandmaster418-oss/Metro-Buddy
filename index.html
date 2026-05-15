@@ -387,6 +387,24 @@
   .song-action.load   { border-color: var(--accent); color: var(--accent); }
   .song-action.gig    { border-color: var(--green); color: var(--green); }
 
+  /* MULTI-SETLIST */
+  .setlist-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .setlist-tabs::-webkit-scrollbar { display: none; }
+  .sl-tab { flex-shrink: 0; padding: 7px 14px; background: #0a0a0a; border: 1px solid var(--line); border-radius: 20px; color: var(--dim); font-family: inherit; font-size: 10px; letter-spacing: 0.14em; cursor: pointer; white-space: nowrap; }
+  .sl-tab.active { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .sl-tab.add-tab { border-style: dashed; }
+  .sl-new-row { display: none; gap: 6px; align-items: center; margin-bottom: 10px; }
+  .sl-new-row.visible { display: flex; }
+  .sl-rename-row { display: none; gap: 6px; align-items: center; margin-bottom: 10px; }
+  .sl-rename-row.visible { display: flex; }
+  .move-menu { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); display: none; }
+  .move-menu.visible { display: block; }
+  .move-menu-label { font-size: 9px; letter-spacing: 0.18em; color: var(--dim); margin-bottom: 5px; }
+  .move-targets { display: flex; flex-wrap: wrap; gap: 5px; }
+  .move-target { padding: 6px 10px; background: #0a0a0a; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-family: inherit; font-size: 9px; letter-spacing: 0.12em; cursor: pointer; }
+  .move-target:active { background: #050505; }
+  .song-action.move { border-color: #2a2a4a; color: #8888cc; }
+
   .sort-row { display: flex; gap: 5px; margin-bottom: 10px; }
   .sort-btn {
     flex: 1; padding: 7px 4px; background: transparent; border: 1px solid var(--line);
@@ -550,7 +568,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.5</div>
+    <div class="meta">v3.6</div>
   </header>
 
   <section class="display">
@@ -748,6 +766,19 @@
       </span>
     </h2>
     <div class="section-body">
+      <!-- Setlist tabs -->
+      <div class="setlist-tabs" id="setlistTabs"></div>
+      <div class="sl-new-row" id="slNewRow">
+        <input class="form-input" id="slNewName" type="text" placeholder="Setlist name..." style="flex:1;height:36px;padding:6px 10px;" />
+        <button class="btn primary" id="slNewSave" style="height:36px;font-size:10px;letter-spacing:0.14em;padding:0 14px;">ADD</button>
+        <button class="btn" id="slNewCancel" style="height:36px;font-size:10px;padding:0 12px;">✕</button>
+      </div>
+      <div class="sl-rename-row" id="slRenameRow">
+        <input class="form-input" id="slRenameName" type="text" placeholder="New name..." style="flex:1;height:36px;padding:6px 10px;" />
+        <button class="btn primary" id="slRenameSave" style="height:36px;font-size:10px;letter-spacing:0.14em;padding:0 14px;">RENAME</button>
+        <button class="btn" id="slRenameCancel" style="height:36px;font-size:10px;padding:0 12px;">✕</button>
+        <button class="btn" id="slDeleteBtn" style="height:36px;font-size:10px;padding:0 12px;border-color:#4a1a1a;color:#884444;">DEL</button>
+      </div>
       <!-- Gig resume banner -->
       <div class="gig-resume-banner" id="gigResumeBanner">
         <p id="gigResumeMsg">Gig in progress. Resume?</p>
@@ -1837,12 +1868,122 @@
   /* ============================================================
      SETLIST
   ============================================================ */
-  const SETLIST_KEY = 'metro-buddy-setlist';
+  /* ============================================================
+     MULTI-SETLIST DATA LAYER
+  ============================================================ */
+  const SETLISTS_KEY = 'metro-buddy-setlists';
+  const ACTIVE_KEY  = 'metro-buddy-active-sl';
+
+  function loadSetlists() {
+    try { return JSON.parse(localStorage.getItem(SETLISTS_KEY) || '[]'); } catch { return []; }
+  }
+  function saveSetlists(lists) { localStorage.setItem(SETLISTS_KEY, JSON.stringify(lists)); }
+  function getActiveId() { return localStorage.getItem(ACTIVE_KEY); }
+  function setActiveId(id) { localStorage.setItem(ACTIVE_KEY, String(id)); }
+
+  // Migrate old single-setlist format
+  (() => {
+    const old = localStorage.getItem('metro-buddy-setlist');
+    if (old && !localStorage.getItem(SETLISTS_KEY)) {
+      try {
+        const songs = JSON.parse(old);
+        const first = { id: Date.now(), name: 'My Setlist', songs };
+        saveSetlists([first]); setActiveId(first.id);
+        localStorage.removeItem('metro-buddy-setlist');
+      } catch {}
+    }
+    if (!loadSetlists().length) {
+      const def = { id: Date.now(), name: 'Setlist', songs: [] };
+      saveSetlists([def]); setActiveId(def.id);
+    }
+    if (!getActiveId() || !loadSetlists().find(l => String(l.id) === getActiveId())) {
+      setActiveId(loadSetlists()[0].id);
+    }
+  })();
+
+  function loadSongs() {
+    const lists = loadSetlists();
+    const active = lists.find(l => String(l.id) === getActiveId());
+    return active ? active.songs : (lists[0] ? lists[0].songs : []);
+  }
+  function saveSongs(songs) {
+    const lists = loadSetlists();
+    const idx = lists.findIndex(l => String(l.id) === getActiveId());
+    if (idx >= 0) { lists[idx].songs = songs; saveSetlists(lists); }
+  }
+
   const SEC_TYPES = ['Intro','V','Pre','C','Break','Bridge','Refrain','Tag','Inter','Instru','Turn','Outro','Solo'];
   let editingId = null;
 
-  function loadSongs() { try { return JSON.parse(localStorage.getItem(SETLIST_KEY) || '[]'); } catch { return []; } }
-  function saveSongs(s) { localStorage.setItem(SETLIST_KEY, JSON.stringify(s)); }
+  function renderSetlistTabs() {
+    const lists = loadSetlists();
+    const activeId = getActiveId();
+    const el = $('setlistTabs'); el.innerHTML = '';
+    lists.forEach(list => {
+      const tab = document.createElement('button');
+      tab.className = 'sl-tab' + (String(list.id) === activeId ? ' active' : '');
+      tab.textContent = list.name;
+      tab.addEventListener('click', () => {
+        setActiveId(list.id);
+        $('slNewRow').classList.remove('visible');
+        $('slRenameRow').classList.remove('visible');
+        renderSetlistTabs();
+        renderSongList();
+        $('setlistLed').classList.toggle('on', loadSongs().length > 0);
+      });
+      tab.addEventListener('dblclick', () => {
+        // double-tap to rename
+        if (String(list.id) === getActiveId()) {
+          $('slRenameName').value = list.name;
+          $('slRenameRow').classList.add('visible');
+          $('slNewRow').classList.remove('visible');
+          $('slRenameName').focus();
+        }
+      });
+      el.appendChild(tab);
+    });
+    // + tab
+    const add = document.createElement('button');
+    add.className = 'sl-tab add-tab'; add.textContent = '+ NEW';
+    add.addEventListener('click', () => {
+      $('slNewRow').classList.add('visible');
+      $('slRenameRow').classList.remove('visible');
+      $('slNewName').value = '';
+      $('slNewName').focus();
+    });
+    el.appendChild(add);
+  }
+
+  $('slNewSave').addEventListener('click', () => {
+    const name = $('slNewName').value.trim() || 'New Setlist';
+    const lists = loadSetlists();
+    const newList = { id: Date.now(), name, songs: [] };
+    lists.push(newList); saveSetlists(lists);
+    setActiveId(newList.id);
+    $('slNewRow').classList.remove('visible');
+    renderSetlistTabs(); renderSongList();
+  });
+  $('slNewName').addEventListener('keydown', e => { if (e.key === 'Enter') $('slNewSave').click(); });
+  $('slNewCancel').addEventListener('click', () => $('slNewRow').classList.remove('visible'));
+
+  $('slRenameSave').addEventListener('click', () => {
+    const name = $('slRenameName').value.trim(); if (!name) return;
+    const lists = loadSetlists();
+    const idx = lists.findIndex(l => String(l.id) === getActiveId());
+    if (idx >= 0) { lists[idx].name = name; saveSetlists(lists); }
+    $('slRenameRow').classList.remove('visible');
+    renderSetlistTabs();
+  });
+  $('slRenameName').addEventListener('keydown', e => { if (e.key === 'Enter') $('slRenameSave').click(); });
+  $('slRenameCancel').addEventListener('click', () => $('slRenameRow').classList.remove('visible'));
+  $('slDeleteBtn').addEventListener('click', () => {
+    const lists = loadSetlists();
+    if (lists.length <= 1) return; // keep at least one
+    const idx = lists.findIndex(l => String(l.id) === getActiveId());
+    if (idx >= 0) { lists.splice(idx, 1); saveSetlists(lists); setActiveId(lists[0].id); }
+    $('slRenameRow').classList.remove('visible');
+    renderSetlistTabs(); renderSongList();
+  });
 
   function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -1902,7 +2043,12 @@
             '<button class="song-action gig">GIG</button>' +
             '<button class="song-action load">LOAD</button>' +
             '<button class="song-action edit">EDIT</button>' +
+            '<button class="song-action move">MOVE</button>' +
             '<button class="song-action delete">DELETE</button>' +
+          '</div>' +
+          '<div class="move-menu">' +
+            '<div class="move-menu-label">MOVE TO:</div>' +
+            '<div class="move-targets"></div>' +
           '</div>' +
         '</div>';
       card.querySelector('.song-title').addEventListener('click', () => card.classList.toggle('expanded'));
@@ -1920,6 +2066,35 @@
       });
       card.querySelector('.edit').addEventListener('click', e => { e.stopPropagation(); openSongForm(loadSongs().find(s => s.id === song.id)); });
       card.querySelector('.delete').addEventListener('click', e => { e.stopPropagation(); saveSongs(loadSongs().filter(s => s.id !== song.id)); renderSongList(); });
+      card.querySelector('.move').addEventListener('click', e => {
+        e.stopPropagation();
+        card.classList.add('expanded');
+        const menu = card.querySelector('.move-menu');
+        const targets = menu.querySelector('.move-targets');
+        targets.innerHTML = '';
+        const allLists = loadSetlists();
+        const activeId = getActiveId();
+        allLists.filter(l => String(l.id) !== activeId).forEach(list => {
+          const btn = document.createElement('button');
+          btn.className = 'move-target'; btn.textContent = list.name;
+          btn.addEventListener('click', ev => {
+            ev.stopPropagation();
+            // Remove from current
+            saveSongs(loadSongs().filter(s => s.id !== song.id));
+            // Add to target (skip if already there)
+            const tgt = allLists.find(l => l.id === list.id);
+            if (tgt && !tgt.songs.find(s => s.id === song.id)) {
+              tgt.songs.push(song);
+              const lists = loadSetlists();
+              const idx = lists.findIndex(l => l.id === list.id);
+              if (idx >= 0) { lists[idx].songs = tgt.songs; saveSetlists(lists); }
+            }
+            renderSongList();
+          });
+          targets.appendChild(btn);
+        });
+        menu.classList.toggle('visible');
+      });
       el.appendChild(card);
     });
     initSortable(el);
@@ -2362,6 +2537,7 @@
     if (idx >= 0) songs[idx] = entry; else songs.push(entry);
     saveSongs(songs); closeSongForm(); renderSongList();
   });
+  renderSetlistTabs();
   renderSongList();
 
   /* ============================================================
