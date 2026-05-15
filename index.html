@@ -487,6 +487,7 @@
     transition: background 0.05s ease, box-shadow 0.05s ease;
   }
   .gig-beat-dot.flash { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 20px var(--accent); }
+  .gig-beat-dot.flash-one { background: #5bc8ff; border-color: #5bc8ff; box-shadow: 0 0 24px #5bc8ff; }
   .gig-sync-hint { font-size: 11px; letter-spacing: 0.18em; color: var(--accent-soft); text-align: center; margin-bottom: 8px; }
   .gig-dots { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
   .gig-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); transition: background 0.2s; }
@@ -568,7 +569,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.6</div>
+    <div class="meta">v3.7</div>
   </header>
 
   <section class="display">
@@ -2330,19 +2331,25 @@
     flashGigSection();
   }
 
-  let gigDotTid = null;
+  let gigDotTid = null, gigDotBeat = 0;
   function startGigDot(bpm) {
     stopGigDot();
     const ms = (60 / bpm) * 1000;
+    const song = gig.songs ? gig.songs[gig.songIdx] : null;
+    const beatsPerBar = (song && song.timeSig === '6-8') ? 6 : 4;
+    gigDotBeat = 0;
     const flash = () => {
       const dot = $('gigBeatDot');
-      dot.classList.add('flash');
-      setTimeout(() => dot.classList.remove('flash'), 100);
+      const isOne = gigDotBeat === 0;
+      dot.classList.remove('flash', 'flash-one');
+      dot.classList.add(isOne ? 'flash-one' : 'flash');
+      setTimeout(() => { dot.classList.remove('flash', 'flash-one'); }, 120);
+      gigDotBeat = (gigDotBeat + 1) % beatsPerBar;
     };
     flash();
     gigDotTid = setInterval(flash, ms);
   }
-  function stopGigDot() { if (gigDotTid) { clearInterval(gigDotTid); gigDotTid = null; } }
+  function stopGigDot() { if (gigDotTid) { clearInterval(gigDotTid); gigDotTid = null; gigDotBeat = 0; } }
 
   function startGig(songs, fromIdx) {
     if (!songs[fromIdx] || !songs[fromIdx].sections || !songs[fromIdx].sections.length) return;
