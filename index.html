@@ -2194,6 +2194,13 @@
      GIG MODE
   ============================================================ */
   const GIG_KEY = 'metro-buddy-gig';
+  const GIG_LABELS = {
+    'Intro':'INTRO', 'V':'VERSE', 'Pre':'PRE-CHORUS', 'C':'CHORUS',
+    'Break':'BREAK', 'Bridge':'BRIDGE', 'Refrain':'REFRAIN', 'Tag':'TAG',
+    'Inter':'INTERLUDE', 'Instru':'INSTRUMENTAL', 'Turn':'TURN',
+    'Outro':'OUTRO', 'Solo':'SOLO',
+  };
+  function gigLabel(type) { return GIG_LABELS[type] || type.toUpperCase(); }
   const gig = { active: false, songs: [], songIdx: 0, sectionIdx: 0, secondsLeft: 0, totalSec: 0, paused: false, tid: null };
 
   function saveGigState() {
@@ -2311,9 +2318,9 @@
     $('gigSongPos').textContent = 'SONG ' + (gig.songIdx + 1) + ' OF ' + gig.songs.length;
     $('gigSongTitle').textContent = song.title;
     $('gigSongMeta').textContent = song.key + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/');
-    $('gigSectionName').textContent = sec.type.toUpperCase();
+    $('gigSectionName').textContent = gigLabel(sec.type);
     updateGigTimerOnly();
-    if (nextSec) $('gigNextLabel').textContent = 'NEXT: ' + nextSec.type.toUpperCase();
+    if (nextSec) $('gigNextLabel').textContent = 'NEXT: ' + gigLabel(nextSec.type);
     else if (!isLastSong) $('gigNextLabel').textContent = 'NEXT SONG: ' + gig.songs[gig.songIdx + 1].title;
     else $('gigNextLabel').textContent = 'LAST SECTION';
     const dots = $('gigDots'); dots.innerHTML = '';
