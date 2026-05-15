@@ -580,7 +580,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.14</div>
+    <div class="meta">v3.15</div>
   </header>
 
   <section class="display">
@@ -1133,7 +1133,14 @@
       audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint:'interactive' });
       masterGain = audioCtx.createGain();
       masterGain.gain.value = 1.0;
-      masterGain.connect(audioCtx.destination);
+      const limiter = audioCtx.createDynamicsCompressor();
+      limiter.threshold.value = -3;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0.001;
+      limiter.release.value = 0.1;
+      masterGain.connect(limiter);
+      limiter.connect(audioCtx.destination);
     }
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
