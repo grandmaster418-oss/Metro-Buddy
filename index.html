@@ -580,7 +580,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.10</div>
+    <div class="meta">v3.11</div>
   </header>
 
   <section class="display">
@@ -743,6 +743,13 @@
       <span class="h2-right"><span class="chevron">▾</span></span>
     </h2>
     <div class="section-body">
+      <div class="pill" style="margin-bottom:10px;">
+        <span class="k">SCALE</span>
+        <div class="seg" id="earScaleSeg">
+          <button data-scale="major" class="active">MAJOR</button>
+          <button data-scale="minpent">MIN PENT</button>
+        </div>
+      </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <span class="label-sm">SCORE</span>
         <span class="label-sm" id="earScore">0 / 0</span>
@@ -755,6 +762,7 @@
         <button class="btn primary" id="earPlayBtn">PLAY</button>
         <button class="btn" id="earSkipBtn">SKIP</button>
       </div>
+      <button class="btn" id="earScaleBtn" style="margin-top:8px;height:42px;font-size:10px;letter-spacing:0.18em;width:100%;">PLAY SCALE</button>
       <div class="ear-answers" id="earAnswers"></div>
       <div class="pill" style="margin-top:10px;">
         <span class="k">MODE</span>
@@ -1788,17 +1796,33 @@
   buildTunerTargets();
 
   /* ============================================================
-     EAR TRAINING — SCALE DEGREES (major key bass)
+     EAR TRAINING — SCALE DEGREES
   ============================================================ */
-  const intervals = [
-    { name: '1 · ROOT', semitones: 0  },
-    { name: '2',        semitones: 2  },
-    { name: '3',        semitones: 4  },
-    { name: '4',        semitones: 5  },
-    { name: '5',        semitones: 7  },
-    { name: '6',        semitones: 9  },
-    { name: 'b7',       semitones: 10 },
-  ];
+  const SCALES = {
+    major: {
+      label: 'MAJOR',
+      degrees: [
+        { name: '1',  semitones: 0  },
+        { name: '2',  semitones: 2  },
+        { name: '3',  semitones: 4  },
+        { name: '4',  semitones: 5  },
+        { name: '5',  semitones: 7  },
+        { name: '6',  semitones: 9  },
+        { name: 'b7', semitones: 10 },
+      ]
+    },
+    minpent: {
+      label: 'MIN PENT',
+      degrees: [
+        { name: '1',  semitones: 0  },
+        { name: 'b3', semitones: 3  },
+        { name: '4',  semitones: 5  },
+        { name: '5',  semitones: 7  },
+        { name: 'b7', semitones: 10 },
+      ]
+    },
+  };
+
   // Roots in A2–A3 range — audible on phone speakers
   const earRoots = [
     { name: 'A',  freq: 110.00 }, { name: 'Bb', freq: 116.54 },
@@ -1807,24 +1831,36 @@
     { name: 'F',  freq: 174.61 }, { name: 'G',  freq: 196.00 },
   ];
 
-  const earState = { score: 0, total: 0, current: null, root: null, fromDegree: null, direction: 'asc', mode: 'root', answered: false };
-  const ET_STATS_KEY = 'metro-buddy-ear-stats';
-  function loadEarStats() { try { return JSON.parse(localStorage.getItem(ET_STATS_KEY)) || {}; } catch { return {}; } }
+  const earState = { score: 0, total: 0, current: null, root: null, fromDegree: null, direction: 'asc', mode: 'root', scale: 'major', answered: false };
+  function earDegrees() { return SCALES[earState.scale].degrees; }
+
+  const ET_STATS_KEY = 'metro-buddy-ear-stats-v2';
+  function loadEarStats() {
+    try { return JSON.parse(localStorage.getItem(ET_STATS_KEY)) || { major: {}, minpent: {} }; }
+    catch { return { major: {}, minpent: {} }; }
+  }
   function saveEarStats(s) { localStorage.setItem(ET_STATS_KEY, JSON.stringify(s)); }
   let earStats = loadEarStats();
+  if (!earStats.major)   earStats.major   = {};
+  if (!earStats.minpent) earStats.minpent = {};
+
   function recordEarStat(semitones, correct) {
-    if (!earStats[semitones]) earStats[semitones] = { correct: 0, total: 0 };
-    earStats[semitones].total++;
-    if (correct) earStats[semitones].correct++;
+    const bucket = earStats[earState.scale];
+    const key = String(semitones);
+    if (!bucket[key]) bucket[key] = { correct: 0, total: 0 };
+    bucket[key].total++;
+    if (correct) bucket[key].correct++;
     saveEarStats(earStats);
     renderEarStats();
   }
+
   function renderEarStats() {
     const el = $('earStatsGrid');
     if (!el) return;
     el.innerHTML = '';
-    intervals.forEach(iv => {
-      const s = earStats[iv.semitones];
+    const bucket = earStats[earState.scale];
+    earDegrees().forEach(iv => {
+      const s = bucket[String(iv.semitones)];
       const total = s ? s.total : 0;
       const correct = s ? s.correct : 0;
       const pct = total > 0 ? Math.round(correct / total * 100) : null;
@@ -1880,18 +1916,31 @@
     playBassNote(b, now + 0.85, 0.7);
   }
 
+  function playFullScale() {
+    const now = audioCtx.currentTime + 0.1;
+    const rf = earState.root.freq;
+    const degs = earDegrees();
+    const step = 0.55;
+    degs.forEach((iv, i) => {
+      playBassNote(rf * Math.pow(2, iv.semitones / 12), now + i * step, 0.45);
+    });
+    // octave root at end
+    playBassNote(rf * 2, now + degs.length * step, 0.6);
+  }
+
   function newEarQuestion() {
     earState.root = earRoots[Math.floor(Math.random() * earRoots.length)];
+    const degs = earDegrees();
     if (earState.mode === 'any') {
-      const fromIdx = Math.floor(Math.random() * intervals.length);
+      const fromIdx = Math.floor(Math.random() * degs.length);
       let toIdx;
-      do { toIdx = Math.floor(Math.random() * intervals.length); } while (toIdx === fromIdx);
-      earState.fromDegree = intervals[fromIdx];
-      earState.current = intervals[toIdx];
+      do { toIdx = Math.floor(Math.random() * degs.length); } while (toIdx === fromIdx);
+      earState.fromDegree = degs[fromIdx];
+      earState.current = degs[toIdx];
       $('earRoot').textContent = 'FROM · ' + earState.fromDegree.name;
     } else {
       earState.fromDegree = null;
-      earState.current = intervals[Math.floor(Math.random() * intervals.length)];
+      earState.current = degs[Math.floor(Math.random() * degs.length)];
       $('earRoot').textContent = 'ROOT · ' + earState.root.name;
     }
     earState.answered = false;
@@ -1904,7 +1953,7 @@
 
   function buildEarAnswers() {
     const el = $('earAnswers'); el.innerHTML = '';
-    intervals.forEach(iv => {
+    earDegrees().forEach(iv => {
       const b = document.createElement('button');
       b.className = 'ear-answer'; b.textContent = iv.name; b.dataset.semi = iv.semitones;
       b.addEventListener('click', () => {
@@ -1929,6 +1978,16 @@
   $('earHeader').addEventListener('click', () => $('earSection').classList.toggle('collapsed'));
   $('earPlayBtn').addEventListener('click', async () => { await resumeAudio(); playCurrentInterval(); });
   $('earSkipBtn').addEventListener('click', () => { earState.total++; $('earScore').textContent = earState.score + ' / ' + earState.total; newEarQuestion(); });
+  $('earScaleBtn').addEventListener('click', async () => { await resumeAudio(); playFullScale(); });
+  $('earScaleSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#earScaleSeg button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    earState.scale = b.dataset.scale;
+    earState.score = 0; earState.total = 0;
+    $('earScore').textContent = '0 / 0';
+    buildEarAnswers(); newEarQuestion(); renderEarStats();
+  });
   $('earDirSeg').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     document.querySelectorAll('#earDirSeg button').forEach(x => x.classList.remove('active'));
@@ -1941,7 +2000,7 @@
     newEarQuestion();
   });
   $('earResetStats').addEventListener('click', () => {
-    earStats = {}; saveEarStats(earStats); renderEarStats();
+    earStats[earState.scale] = {}; saveEarStats(earStats); renderEarStats();
   });
   buildEarAnswers(); newEarQuestion(); renderEarStats();
 
