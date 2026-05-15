@@ -2373,16 +2373,27 @@
   $('setlistHeader').addEventListener('click', () => $('setlistSection').classList.toggle('collapsed'));
   $('setlistAddBtn').addEventListener('click', () => openSongForm(null));
   $('formCancelBtn').addEventListener('click', closeSongForm);
-  $('addSectionRowBtn').addEventListener('click', () => $('sectionRows').appendChild(makeSectionRow(null)));
+  $('addSectionRowBtn').addEventListener('click', () => { $('sectionRows').appendChild(makeSectionRow(null)); recalcDuration(); });
 
   function recalcAllBars() {
     $('sectionRows').querySelectorAll('.section-row').forEach(row => {
       const b = +row.querySelector('.bars-in').value;
       if (b > 0) row.querySelector('.secs-in').value = barsToSec(b);
     });
+    recalcDuration();
   }
+
+  function recalcDuration() {
+    let total = 0;
+    $('sectionRows').querySelectorAll('.secs-in').forEach(el => { total += +el.value || 0; });
+    if (total > 0) $('formDuration').value = Math.ceil(total / 60);
+  }
+
   $('formBpm').addEventListener('input', recalcAllBars);
   $('formMeter').addEventListener('change', recalcAllBars);
+  $('sectionRows').addEventListener('input', e => {
+    if (e.target.classList.contains('secs-in')) recalcDuration();
+  });
 
   $('formSaveBtn').addEventListener('click', () => {
     const title = $('formTitle').value.trim(); if (!title) { $('formTitle').focus(); return; }
