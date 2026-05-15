@@ -573,7 +573,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.1</div>
+    <div class="meta">v3.2</div>
   </header>
 
   <section class="display">
@@ -898,7 +898,9 @@
   <div class="qr-overlay" id="qrOverlay" style="display:none;">
     <div class="qr-box">
       <div class="qr-title">SCAN TO IMPORT SETLIST</div>
-      <div id="qrCanvas" style="display:flex;justify-content:center;min-height:236px;align-items:center;"></div>
+      <div id="qrCanvas" style="display:flex;justify-content:center;min-height:236px;align-items:center;">
+        <img id="qrImg" style="width:220px;height:220px;border-radius:6px;" src="" alt="QR Code" />
+      </div>
       <div class="qr-hint" id="qrHint">Point your phone camera at this code.</div>
       <button class="btn" id="qrShareBtn" style="width:100%;margin-top:10px;display:none;">⬆ SHARE LINK</button>
       <button class="btn" style="width:100%;margin-top:8px;" id="qrCloseBtn">CLOSE</button>
@@ -2141,17 +2143,23 @@
     const songs = loadSongs();
     if (!songs.length) return;
     const url = shareURL(songs);
-    const container = $('qrCanvas');
-    container.innerHTML = '';
-    if (typeof QRCode !== 'undefined') {
-      new QRCode(container, { text: url, width: 220, height: 220,
-        colorDark: '#000000', colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.L });
-      $('qrHint').textContent = 'Scan with your phone camera.';
-    } else {
-      container.innerHTML = '<div style="width:220px;height:220px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7a766e;text-align:center;padding:20px;">Use SHARE or LINK button</div>';
-      $('qrHint').textContent = 'QR library not loaded.';
-    }
+    // Use qrserver.com API (clean, scannable image) with bundled library fallback
+    const img = $('qrImg');
+    img.style.display = 'block';
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?data=' + encodeURIComponent(url) + '&size=280x280&ecc=M';
+    $('qrHint').textContent = 'Scan with your phone camera.';
+    img.onerror = () => {
+      // API failed — fall back to bundled library
+      img.style.display = 'none';
+      const container = $('qrCanvas');
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(container, { text: url, width: 280, height: 280,
+          colorDark: '#000000', colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M });
+      } else {
+        container.innerHTML += '<div style="width:280px;height:60px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7a766e;">Use SHARE or LINK button</div>';
+      }
+    };
     // Always show share button if available
     const shareBtn = $('qrShareBtn');
     if (navigator.share) {
