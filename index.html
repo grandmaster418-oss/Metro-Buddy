@@ -488,6 +488,13 @@
   .gig-progress-bar { height: 100%; background: var(--green); border-radius: 2px; transition: width 1s linear; }
   .gig-progress-bar.urgent { background: var(--accent); }
   .gig-next-label { font-size: 36px; font-weight: 700; letter-spacing: 0.06em; color: var(--dim); min-height: 44px; margin-top: 8px; }
+  .gig-beat-dot {
+    width: 20px; height: 20px; border-radius: 50%; background: #1a1a1a;
+    border: 2px solid var(--line); margin: 0 auto 16px;
+    transition: background 0.05s ease, box-shadow 0.05s ease;
+  }
+  .gig-beat-dot.flash { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 20px var(--accent); }
+  .gig-sync-hint { font-size: 11px; letter-spacing: 0.18em; color: var(--accent-soft); text-align: center; margin-bottom: 8px; }
   .gig-dots { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
   .gig-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); transition: background 0.2s; }
   .gig-dot.done { background: var(--dim); }
@@ -566,7 +573,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v2.8</div>
+    <div class="meta">v2.9</div>
   </header>
 
   <section class="display">
@@ -869,6 +876,8 @@
     <div class="gig-content">
       <div class="gig-song-title" id="gigSongTitle">—</div>
       <div class="gig-song-meta" id="gigSongMeta">—</div>
+      <div class="gig-sync-hint" id="gigSyncHint">TAP RESUME TO SYNC</div>
+      <div class="gig-beat-dot" id="gigBeatDot"></div>
       <div class="gig-section-name" id="gigSectionName">—</div>
       <div class="gig-timer-display" id="gigTimerDisplay">0:00</div>
       <div class="gig-progress"><div class="gig-progress-bar" id="gigProgressBar" style="width:100%"></div></div>
@@ -1400,6 +1409,12 @@
         all[beatIdx].classList.add('active');
         setTimeout(() => all[beatIdx] && all[beatIdx].classList.remove('active'), 90);
       }
+    }
+    // Flash gig beat dot on beat 1
+    if (gig.active && stepIndex === 0) {
+      const dot = $('gigBeatDot');
+      dot.classList.add('flash');
+      setTimeout(() => dot.classList.remove('flash'), 120);
     }
   }
 
@@ -2203,9 +2218,12 @@
   function startGig(songs, fromIdx) {
     if (!songs[fromIdx] || !songs[fromIdx].sections || !songs[fromIdx].sections.length) return;
     clearInterval(gig.tid);
-    gig.songs = songs; gig.songIdx = fromIdx; gig.sectionIdx = 0; gig.paused = false; gig.active = true;
+    gig.songs = songs; gig.songIdx = fromIdx; gig.sectionIdx = 0; gig.paused = true; gig.active = true;
     gig.totalSec = gig.secondsLeft = secDur(songs[fromIdx].sections[0]);
     loadSongIntoMetro(songs[fromIdx]);
+    if (!state.playing) start(); // ensure metronome is running for beat dot
+    $('gigPauseBtn').textContent = 'RESUME';
+    $('gigSyncHint').style.display = 'block';
     $('gigOverlay').style.display = 'flex';
     updateGigUI();
     gig.tid = setInterval(() => {
@@ -2309,6 +2327,8 @@
   $('gigPauseBtn').addEventListener('click', () => {
     gig.paused = !gig.paused;
     $('gigPauseBtn').textContent = gig.paused ? 'RESUME' : 'PAUSE';
+    if (!gig.paused) $('gigSyncHint').style.display = 'none';
+    else $('gigSyncHint').style.display = 'block';
   });
   $('gigNextSecBtn').addEventListener('click', () => gigNextSection(false));
   $('gigNextSongBtn').addEventListener('click', gigNextSong);
