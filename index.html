@@ -445,6 +445,9 @@
     width: 100%; text-align: center; -webkit-appearance: none; appearance: none;
   }
   .section-num:focus { outline: none; border-color: var(--accent); }
+  .section-num::-webkit-outer-spin-button,
+  .section-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .section-num[type="number"] { -moz-appearance: textfield; }
   .section-remove {
     width: 28px; height: 28px; background: transparent; border: 1px solid #3a1414;
     border-radius: 4px; color: #884444; font-size: 12px; cursor: pointer; display: grid; place-items: center;
@@ -580,7 +583,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.16</div>
+    <div class="meta">v3.17</div>
   </header>
 
   <section class="display">
