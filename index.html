@@ -583,7 +583,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.17</div>
+    <div class="meta">v3.18</div>
   </header>
 
   <section class="display">
@@ -859,7 +859,7 @@
         <div class="form-row">
           <div class="form-field">
             <label class="form-label">KEY</label>
-            <input class="form-input" id="formKey" type="text" placeholder="G" maxlength="3" />
+            <input class="form-input" id="formKey" type="text" placeholder="G" maxlength="3" autocapitalize="characters" />
           </div>
           <div class="form-field">
             <label class="form-label">BPM</label>
@@ -2717,6 +2717,14 @@
 
   $('formBpm').addEventListener('input', recalcAllBars);
   $('formMeter').addEventListener('change', recalcAllBars);
+  $('formKey').addEventListener('input', e => {
+    const v = e.target.value;
+    if (v && v[0] !== v[0].toUpperCase()) {
+      const pos = e.target.selectionStart;
+      e.target.value = v[0].toUpperCase() + v.slice(1);
+      e.target.setSelectionRange(pos, pos);
+    }
+  });
   $('sectionRows').addEventListener('input', e => {
     if (e.target.classList.contains('secs-in')) recalcDuration();
   });
@@ -2732,7 +2740,9 @@
       sections.push({ type, bars, seconds: secs, ...(note && { note }) });
     });
     const songs = loadSongs();
-    const entry = { id: editingId || Date.now(), title, key: $('formKey').value.trim() || '?', bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, duration: +$('formDuration').value || 0, sections, notes: $('formNotes').value.trim() };
+    const rawKey = $('formKey').value.trim();
+    const key = rawKey ? rawKey[0].toUpperCase() + rawKey.slice(1) : '?';
+    const entry = { id: editingId || Date.now(), title, key, bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, duration: +$('formDuration').value || 0, sections, notes: $('formNotes').value.trim() };
     const idx = songs.findIndex(s => s.id === editingId);
     if (idx >= 0) songs[idx] = entry; else songs.push(entry);
     saveSongs(songs); closeSongForm(); renderSongList();
