@@ -438,7 +438,7 @@
   .form-input:focus, .section-type-sel:focus { outline: none; border-color: var(--accent); }
   .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
   .section-header-row,
-  .section-row { display: grid; grid-template-columns: 72px 1fr 1fr 28px; gap: 5px; margin-bottom: 5px; }
+  .section-row { display: grid; grid-template-columns: 68px 40px 46px 1fr 28px; gap: 4px; margin-bottom: 5px; }
   .section-num {
     padding: 6px 5px; background: #050505; border: 1px solid var(--line);
     border-radius: 4px; color: var(--ink); font-family: inherit; font-size: 11px;
@@ -580,7 +580,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.15</div>
+    <div class="meta">v3.16</div>
   </header>
 
   <section class="display">
@@ -880,6 +880,7 @@
             <div class="form-label">TYPE</div>
             <div class="form-label">BARS</div>
             <div class="form-label">SEC</div>
+            <div class="form-label">NOTE</div>
             <div></div>
           </div>
           <div id="sectionRows"></div>
@@ -910,6 +911,7 @@
       <div class="gig-sync-hint" id="gigSyncHint">TAP RESUME TO SYNC</div>
       <div class="gig-beat-dot" id="gigBeatDot"></div>
       <div class="gig-section-name" id="gigSectionName">—</div>
+      <div id="gigSectionNote" style="font-size:14px;color:var(--dim);letter-spacing:0.1em;min-height:20px;margin-top:4px;"></div>
       <div class="gig-timer-display" id="gigTimerDisplay">0:00</div>
       <div class="gig-progress"><div class="gig-progress-bar" id="gigProgressBar" style="width:100%"></div></div>
       <div class="gig-next-label" id="gigNextLabel"></div>
@@ -2215,7 +2217,7 @@
       card.dataset.songId = song.id;
       const struct = song.sections.map(s => {
         const dur = s.seconds ? s.seconds + 's' : (s.bars ? s.bars + 'b' : '');
-        return s.type + (dur ? '(' + dur + ')' : '');
+        return s.type + (dur ? '(' + dur + ')' : '') + (s.note ? '[' + s.note + ']' : '');
       }).join(' → ');
       card.innerHTML =
         '<div class="drag-handle">⠿</div>' +
@@ -2296,10 +2298,12 @@
     const row = document.createElement('div'); row.className = 'section-row';
     const bars = sec && sec.bars ? sec.bars : '';
     const secs = sec ? (sec.seconds || (sec.bars ? barsToSec(sec.bars) : '')) : '';
+    const note = sec && sec.note ? sec.note : '';
     row.innerHTML =
-      '<select class="section-type-sel">' + SEC_TYPES.map(t => '<option value="' + t + '"' + (sec && sec.type===t?' selected':'') + '>' + t + '</option>').join('') + '</select>' +
-      '<input class="section-num bars-in" type="number" placeholder="bars" min="1" max="999" value="' + bars + '" />' +
-      '<input class="section-num secs-in" type="number" placeholder="sec" min="1" max="9999" value="' + secs + '" />' +
+      '<select class="section-type-sel" style="font-size:10px;padding:5px 3px;">' + SEC_TYPES.map(t => '<option value="' + t + '"' + (sec && sec.type===t?' selected':'') + '>' + t + '</option>').join('') + '</select>' +
+      '<input class="section-num bars-in" type="number" placeholder="—" min="1" max="999" value="' + bars + '" style="font-size:10px;padding:5px 3px;" />' +
+      '<input class="section-num secs-in" type="number" placeholder="—" min="1" max="9999" value="' + secs + '" style="font-size:10px;padding:5px 3px;" />' +
+      '<input class="section-num note-in" type="text" placeholder="note…" maxlength="40" value="' + note.replace(/"/g,'&quot;') + '" style="font-size:10px;padding:5px 4px;" />' +
       '<button class="section-remove">✕</button>';
     row.querySelector('.section-remove').addEventListener('click', () => row.remove());
     row.querySelector('.bars-in').addEventListener('input', e => {
@@ -2624,6 +2628,7 @@
     $('gigSongTitle').textContent = song.title;
     $('gigSongMeta').textContent = song.key + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/');
     $('gigSectionName').textContent = gigLabel(sec.type);
+    $('gigSectionNote').textContent = sec.note || '';
     updateGigTimerOnly();
     if (nextSec) $('gigNextLabel').textContent = 'NEXT: ' + gigLabel(nextSec.type);
     else if (!isLastSong) $('gigNextLabel').textContent = 'NEXT SONG: ' + gig.songs[gig.songIdx + 1].title;
@@ -2720,7 +2725,8 @@
       const type = row.querySelector('select').value;
       const bars = +row.querySelector('.bars-in').value || 0;
       const secs = +row.querySelector('.secs-in').value || 30;
-      sections.push({ type, bars, seconds: secs });
+      const note = row.querySelector('.note-in').value.trim();
+      sections.push({ type, bars, seconds: secs, ...(note && { note }) });
     });
     const songs = loadSongs();
     const entry = { id: editingId || Date.now(), title, key: $('formKey').value.trim() || '?', bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, duration: +$('formDuration').value || 0, sections, notes: $('formNotes').value.trim() };
