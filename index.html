@@ -583,7 +583,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.18</div>
+    <div class="meta">v3.20</div>
   </header>
 
   <section class="display">
@@ -1854,7 +1854,7 @@
     playCurrentInterval();
     earAutoTid = setInterval(() => { if (!earState.answered) playCurrentInterval(); }, 2800);
   }
-  function stopEarAuto() { if (earAutoTid) { clearInterval(earAutoTid); earAutoTid = null; } }
+  function stopEarAuto() { if (earAutoTid) { clearInterval(earAutoTid); earAutoTid = null; } cancelEarAudio(); }
   function earDegrees() { return SCALES[earState.scale].degrees; }
 
   const ET_STATS_KEY = 'metro-buddy-ear-stats-v2';
@@ -1901,6 +1901,23 @@
     if (audioCtx.state !== 'running') await audioCtx.resume();
   }
 
+  let earActiveNotes = [];
+  function cancelEarAudio() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const fadeEnd = now + 0.015;
+    earActiveNotes.forEach(n => {
+      try {
+        n.env.gain.cancelScheduledValues(now);
+        n.env.gain.setValueAtTime(n.env.gain.value, now);
+        n.env.gain.linearRampToValueAtTime(0, fadeEnd);
+        n.oscs.forEach(o => { try { o.stop(fadeEnd + 0.005); } catch {} });
+        setTimeout(() => { try { n.env.disconnect(); } catch {} }, 25);
+      } catch {}
+    });
+    earActiveNotes = [];
+  }
+
   function playBassNote(freq, startTime, dur) {
     ensureAudio();
     const ctx = audioCtx;
@@ -1910,6 +1927,7 @@
     env.gain.setValueAtTime(0.55, startTime + dur * 0.65);
     env.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
     env.connect(masterGain);
+    const oscs = [];
     [1, 2, 3, 4].forEach((h, i) => {
       const osc = ctx.createOscillator();
       const hg = ctx.createGain();
@@ -1918,10 +1936,15 @@
       hg.gain.value = [0.6, 0.25, 0.1, 0.05][i];
       osc.connect(hg).connect(env);
       osc.start(startTime); osc.stop(startTime + dur + 0.05);
+      oscs.push(osc);
     });
+    const endsAt = startTime + dur + 0.05;
+    earActiveNotes.push({ env, oscs, endsAt });
+    earActiveNotes = earActiveNotes.filter(n => n.endsAt > ctx.currentTime - 0.2);
   }
 
   function playCurrentInterval() {
+    cancelEarAudio();
     const now = audioCtx.currentTime + 0.1;
     const rf = earState.root.freq;
     let a, b;
@@ -1940,6 +1963,7 @@
   }
 
   function playFullScale() {
+    cancelEarAudio();
     const now = audioCtx.currentTime + 0.1;
     const rf = earState.root.freq;
     const degs = earDegrees();
@@ -1976,6 +2000,7 @@
   }
 
   function playDegreeFromRoot(semitones) {
+    cancelEarAudio();
     const now = audioCtx.currentTime + 0.1;
     const rf = earState.root.freq;
     let a = rf, b = rf * Math.pow(2, semitones / 12);
