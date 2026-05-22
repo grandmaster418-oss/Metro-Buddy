@@ -583,7 +583,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.20</div>
+    <div class="meta">v3.21</div>
   </header>
 
   <section class="display">
@@ -1325,8 +1325,6 @@
     for (const [thr,name] of tempoMarks) if (v < thr) { tempoMark.textContent = '— ' + name; break; }
   }
   bpmSlider.addEventListener('input', e => setBPM(+e.target.value));
-  $('bpmDown').addEventListener('click', () => setBPM(state.bpm - 1));
-  $('bpmUp').addEventListener('click', () => setBPM(state.bpm + 1));
   function holdRepeat(el, fn) {
     let t1, t2;
     const start = e => { e.preventDefault(); fn(); t1 = setTimeout(()=>{ t2 = setInterval(fn, 60); },350); };
