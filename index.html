@@ -381,8 +381,13 @@
   }
   .song-card { background: #0a0a0a; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start; }
   .song-card.dragging { opacity: 0.4; transform: scale(0.98); }
-  .drag-handle { color: var(--dim); font-size: 15px; cursor: grab; touch-action: none; padding-top: 1px; flex-shrink: 0; user-select: none; letter-spacing: -2px; }
-  .drag-handle:active { cursor: grabbing; color: var(--ink); }
+  .drag-handle {
+    color: var(--accent-soft); font-size: 20px; cursor: grab; touch-action: none;
+    flex-shrink: 0; user-select: none; letter-spacing: -2px;
+    padding: 6px 4px; margin: -6px 0; line-height: 1;
+    align-self: stretch; display: flex; align-items: center;
+  }
+  .drag-handle:active { cursor: grabbing; color: var(--accent); }
   .song-card-content { flex: 1; min-width: 0; }
   .song-title { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; }
   .song-meta  { font-size: 10px; color: var(--dim); letter-spacing: 0.14em; margin-top: 3px; }
@@ -583,7 +588,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.21</div>
+    <div class="meta">v3.22</div>
   </header>
 
   <section class="display">
