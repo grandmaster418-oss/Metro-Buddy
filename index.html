@@ -220,6 +220,11 @@
   }
   .preset:active { background: #050505; }
   .preset.active { border-color: var(--accent); color: var(--accent); }
+  .preset.custom { border-style: dashed; padding-right: 4px; display: inline-flex; align-items: center; gap: 6px; }
+  .preset.custom .preset-x { color: #884444; font-size: 14px; padding: 0 4px; line-height: 1; }
+  .preset.custom .preset-x:hover { color: var(--accent); }
+  .save-groove-row { display: none; gap: 6px; margin-top: 8px; align-items: center; }
+  .save-groove-row.visible { display: flex; }
 
   .clear-btn {
     margin-top: 10px; width: 100%; padding: 8px;
@@ -588,7 +593,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.23</div>
+    <div class="meta">v3.24</div>
   </header>
 
   <section class="display">
@@ -700,7 +705,15 @@
       <div id="grooveGrid"></div>
       <div class="count-row" id="countRow"></div>
       <div class="preset-row" id="presetRow"></div>
-      <button class="clear-btn" id="clearTargetBtn">CLEAR TARGET TRACK</button>
+      <div class="save-groove-row" id="saveGrooveRow">
+        <input class="form-input" id="saveGrooveName" type="text" placeholder="Groove name..." maxlength="20" style="flex:1;height:34px;font-size:11px;padding:6px 10px;" />
+        <button class="btn primary" id="saveGrooveConfirm" style="height:34px;font-size:10px;letter-spacing:0.14em;padding:0 12px;">SAVE</button>
+        <button class="btn" id="saveGrooveCancel" style="height:34px;font-size:10px;padding:0 10px;">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="clear-btn" id="saveGrooveBtn" style="flex:1;margin-top:0;">+ SAVE GROOVE</button>
+        <button class="clear-btn" id="clearTargetBtn" style="flex:1;margin-top:0;">CLEAR TARGET</button>
+      </div>
     </div>
   </section>
 
@@ -1464,19 +1477,79 @@
     }
   }
 
+  const GROOVES_KEY = 'metro-buddy-custom-grooves';
+  function loadCustomGrooves() { try { return JSON.parse(localStorage.getItem(GROOVES_KEY)) || []; } catch { return []; } }
+  function saveCustomGrooves(g) { localStorage.setItem(GROOVES_KEY, JSON.stringify(g)); }
+
   function buildPresetRow() {
     presetRow.innerHTML = '';
     for (const k of presetOrder) {
       const b = document.createElement('button');
       b.className = 'preset'; b.dataset.preset = k; b.textContent = presetLabels[k];
+      if (state.activePreset === k) b.classList.add('active');
       b.addEventListener('click', () => applyPreset(k));
       presetRow.appendChild(b);
     }
+    for (const g of loadCustomGrooves()) {
+      const b = document.createElement('button');
+      b.className = 'preset custom';
+      b.dataset.preset = 'custom:' + g.id;
+      if (state.activePreset === 'custom:' + g.id) b.classList.add('active');
+      const label = document.createElement('span'); label.textContent = g.name;
+      const x = document.createElement('span'); x.className = 'preset-x'; x.textContent = '×';
+      b.appendChild(label); b.appendChild(x);
+      b.addEventListener('click', e => {
+        if (e.target.classList.contains('preset-x')) {
+          if (confirm('Delete "' + g.name + '"?')) {
+            saveCustomGrooves(loadCustomGrooves().filter(x => x.id !== g.id));
+            if (state.activePreset === 'custom:' + g.id) state.activePreset = 'off';
+            buildPresetRow();
+          }
+          return;
+        }
+        applyPreset('custom:' + g.id);
+      });
+      presetRow.appendChild(b);
+    }
   }
+
+  function applyCustomGroove(id) {
+    const groove = loadCustomGrooves().find(g => g.id === id);
+    if (!groove) return;
+    const targetFeel = groove.feel === 'halftime';
+    if (groove.meter !== state.meter) {
+      state.meter = groove.meter;
+      document.querySelectorAll('#meterSeg button').forEach(x => x.classList.remove('active'));
+      const mb = document.querySelector('#meterSeg button[data-meter="' + groove.meter + '"]');
+      if (mb) mb.classList.add('active');
+      grooveTitle.textContent = state.meter === '6-8' ? 'GROOVE · 12 STEP (6/8)' : 'GROOVE · 16 STEP';
+      renderBeatIndicator();
+      renderCountRow();
+    }
+    if (targetFeel !== state.halfTime) {
+      state.halfTime = targetFeel;
+      halfTimeBtn.dataset.on = state.halfTime;
+      halfTimeVal.textContent = state.halfTime ? 'HALF-TIME' : 'STRAIGHT';
+    }
+    const m = meterDefs[state.meter];
+    state.pattern.kick  = (groove.patterns.kick  || []).slice();
+    state.pattern.snare = (groove.patterns.snare || []).slice();
+    state.pattern.hat   = (groove.patterns.hat   || []).slice();
+    if (state.pattern.target.length !== m.steps) state.pattern.target = Array(m.steps).fill(false);
+    setActivePreset('custom:' + id);
+    renderGroove();
+    if (state.playing) { stop(); start(); }
+  }
+
   function applyPreset(name) {
     if (!name) name = 'off';
+    if (typeof name === 'string' && name.startsWith('custom:')) {
+      applyCustomGroove(+name.slice(7));
+      return;
+    }
     const feel = state.halfTime ? 'halftime' : 'straight';
-    const p = presets[state.meter][feel][name];
+    let p = presets[state.meter] && presets[state.meter][feel] && presets[state.meter][feel][name];
+    if (!p) { name = 'off'; p = presets[state.meter][feel]['off']; }
     const m = meterDefs[state.meter];
     const savedTarget = state.pattern.target.slice();
     for (const t of ['kick','snare','hat']) {
@@ -1502,6 +1575,39 @@
     const m = meterDefs[state.meter];
     state.pattern.target = Array(m.steps).fill(false);
     renderGroove();
+  });
+
+  $('saveGrooveBtn').addEventListener('click', () => {
+    $('saveGrooveRow').classList.add('visible');
+    $('saveGrooveName').focus();
+  });
+  $('saveGrooveCancel').addEventListener('click', () => {
+    $('saveGrooveRow').classList.remove('visible');
+    $('saveGrooveName').value = '';
+  });
+  $('saveGrooveConfirm').addEventListener('click', () => {
+    const name = $('saveGrooveName').value.trim();
+    if (!name) { $('saveGrooveName').focus(); return; }
+    const grooves = loadCustomGrooves();
+    grooves.push({
+      id: Date.now(),
+      name,
+      meter: state.meter,
+      feel: state.halfTime ? 'halftime' : 'straight',
+      patterns: {
+        kick:  state.pattern.kick.slice(),
+        snare: state.pattern.snare.slice(),
+        hat:   state.pattern.hat.slice(),
+      }
+    });
+    saveCustomGrooves(grooves);
+    state.activePreset = 'custom:' + grooves[grooves.length - 1].id;
+    $('saveGrooveName').value = '';
+    $('saveGrooveRow').classList.remove('visible');
+    buildPresetRow();
+  });
+  $('saveGrooveName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') $('saveGrooveConfirm').click();
   });
 
   playBtn.addEventListener('click', () => state.playing ? stop() : start());
