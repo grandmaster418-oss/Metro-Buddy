@@ -588,7 +588,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.22</div>
+    <div class="meta">v3.23</div>
   </header>
 
   <section class="display">
@@ -1269,7 +1269,11 @@
 
   function scheduleStep(stepIndex, time) {
     const m = meterDefs[state.meter];
-    if (state.metroOn) {
+    const isAccent = state.accent.on && state.meter === '4-4' && state.accent.positions.includes(stepIndex);
+
+    if (isAccent) {
+      playAccent(time);
+    } else if (state.metroOn) {
       const isBeatOne = stepIndex === 0;
       const isOtherBeat = m.beatStarts.includes(stepIndex) && !isBeatOne;
       const isEighth = (stepIndex % m.eighthEvery) === 0;
@@ -1283,10 +1287,6 @@
     if (state.pattern.kick[stepIndex])   playKick(time, state.levels.kick);
     if (state.pattern.snare[stepIndex])  playSnare(time, state.levels.snare);
     if (state.pattern.hat[stepIndex])    playHat(time, state.levels.hat);
-
-    if (state.accent.on && state.meter === '4-4') {
-      if (state.accent.positions.includes(stepIndex)) playAccent(time);
-    }
 
     const uiAt = (time - audioCtx.currentTime) * 1000;
     setTimeout(() => updatePlayheadUI(stepIndex), Math.max(0, uiAt));
@@ -2602,6 +2602,8 @@
     gig.secondsLeft = gs.secondsLeft || gig.totalSec;
     gig.paused = true; gig.active = true;
     loadSongIntoMetro(song);
+    startGigDot(song.bpm);
+    $('gigSyncHint').style.display = 'block';
     $('gigOverlay').style.display = 'flex';
     updateGigUI();
     $('gigPauseBtn').textContent = 'RESUME';
