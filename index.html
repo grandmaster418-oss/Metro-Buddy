@@ -600,7 +600,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.33</div>
+    <div class="meta">v3.34</div>
   </header>
 
   <section class="display">
@@ -875,6 +875,10 @@
       <!-- Import banner (shown when URL contains import data) -->
       <div class="import-banner" id="importBanner">
         <p id="importBannerMsg">Setlist found. Import?</p>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span class="label-sm">INTO</span>
+          <select class="form-input" id="importTargetSel" style="flex:1;height:34px;padding:4px 8px;font-size:11px;"></select>
+        </div>
         <div class="transport">
           <button class="btn primary" id="importYesBtn">IMPORT</button>
           <button class="btn" id="importNoBtn">CANCEL</button>
@@ -2791,10 +2795,7 @@
       try {
         const imported = JSON.parse(ev.target.result);
         if (!Array.isArray(imported)) throw new Error();
-        const existing = loadSongs();
-        const existingIds = new Set(existing.map(s => s.id));
-        const newSongs = imported.filter(s => !existingIds.has(s.id));
-        saveSongs([...existing, ...newSongs]); renderSongList();
+        openImportBanner(imported);
         $('importFileInput').value = '';
       } catch { /* invalid file — silently ignore */ }
     };
@@ -2849,32 +2850,70 @@
   $('qrCloseBtn').addEventListener('click', () => { $('qrOverlay').style.display = 'none'; });
   $('qrOverlay').addEventListener('click', e => { if (e.target === $('qrOverlay')) $('qrOverlay').style.display = 'none'; });
 
-  // URL IMPORT — check on load
+  // Import banner — used by both URL import and file import
   let pendingImport = null;
+
+  function populateImportTargets() {
+    const sel = $('importTargetSel');
+    const lists = loadSetlists();
+    const activeId = getActiveId();
+    sel.innerHTML = '';
+    lists.forEach(l => {
+      const o = document.createElement('option');
+      o.value = String(l.id); o.textContent = l.name;
+      if (String(l.id) === activeId) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  function openImportBanner(songs, sourceLabel) {
+    pendingImport = songs;
+    populateImportTargets();
+    updateImportPreview();
+    $('importBanner').style.display = 'block';
+  }
+
+  function updateImportPreview() {
+    if (!pendingImport) return;
+    const lists = loadSetlists();
+    const target = lists.find(l => String(l.id) === $('importTargetSel').value);
+    const existingIds = new Set((target ? target.songs : []).map(s => s.id));
+    const newCount = pendingImport.filter(s => !existingIds.has(s.id)).length;
+    const dupCount = pendingImport.length - newCount;
+    if (newCount === 0) {
+      $('importBannerMsg').textContent = 'All ' + pendingImport.length + ' songs already in "' + (target ? target.name : '?') + '".';
+    } else {
+      $('importBannerMsg').textContent = newCount + ' new song' + (newCount !== 1 ? 's' : '') + (dupCount ? ' (' + dupCount + ' duplicate' + (dupCount !== 1 ? 's' : '') + ' skipped)' : '') + '. Add to "' + (target ? target.name : '?') + '"?';
+    }
+  }
+
+  $('importTargetSel').addEventListener('change', updateImportPreview);
+
+  // URL IMPORT — check on load
   const hash = location.hash;
   if (hash.startsWith('#import=')) {
     try {
-      pendingImport = decodeSetlist(hash.slice(8));
-      const existing = loadSongs();
-      const existingIds = new Set(existing.map(s => s.id));
-      const newSongs = pendingImport.filter(s => !existingIds.has(s.id));
-      const banner = $('importBanner');
-      if (newSongs.length === 0) {
-        $('importBannerMsg').textContent = 'All ' + pendingImport.length + ' songs already in your setlist.';
-      } else {
-        $('importBannerMsg').textContent = newSongs.length + ' new song' + (newSongs.length !== 1 ? 's' : '') + ' found' + (pendingImport.length - newSongs.length > 0 ? ' (' + (pendingImport.length - newSongs.length) + ' already in setlist, skipped)' : '') + '. Add them?';
-      }
-      pendingImport = newSongs;
-      banner.style.display = 'block';
-      history.replaceState(null, '', location.pathname); // clean URL
+      const imported = decodeSetlist(hash.slice(8));
+      history.replaceState(null, '', location.pathname);
+      openImportBanner(imported);
     } catch { /* malformed — ignore */ }
   }
+
   $('importYesBtn').addEventListener('click', () => {
     if (!pendingImport) return;
-    saveSongs([...loadSongs(), ...pendingImport]);
+    const lists = loadSetlists();
+    const targetId = $('importTargetSel').value;
+    const idx = lists.findIndex(l => String(l.id) === targetId);
+    if (idx < 0) { $('importBanner').style.display = 'none'; pendingImport = null; return; }
+    const existingIds = new Set(lists[idx].songs.map(s => s.id));
+    const newSongs = pendingImport.filter(s => !existingIds.has(s.id));
+    lists[idx].songs = [...lists[idx].songs, ...newSongs];
+    saveSetlists(lists);
     pendingImport = null;
     $('importBanner').style.display = 'none';
-    renderSongList();
+    // If we imported into the active setlist, refresh the visible list
+    if (targetId === getActiveId()) renderSongList();
+    renderSetlistTabs();
   });
   $('importNoBtn').addEventListener('click', () => {
     pendingImport = null; $('importBanner').style.display = 'none';
