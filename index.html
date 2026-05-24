@@ -593,7 +593,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.24</div>
+    <div class="meta">v3.25</div>
   </header>
 
   <section class="display">
@@ -801,6 +801,13 @@
           <button data-dir="asc" class="active">UP</button>
           <button data-dir="desc">DOWN</button>
           <button data-dir="both">BOTH</button>
+        </div>
+      </div>
+      <div class="pill" style="margin-top:8px;">
+        <span class="k">PICK</span>
+        <div class="seg" id="earSelectSeg">
+          <button data-sel="random" class="active">RANDOM</button>
+          <button data-sel="adaptive">ADAPTIVE</button>
         </div>
       </div>
       <div class="ear-stats-panel">
@@ -1956,7 +1963,33 @@
     { name: 'F',  freq: 174.61 }, { name: 'G',  freq: 196.00 },
   ];
 
-  const earState = { score: 0, total: 0, current: null, root: null, fromDegree: null, direction: 'asc', mode: 'root', scale: 'major', answered: false, auto: false };
+  const ET_SELECT_KEY = 'metro-buddy-ear-select';
+  const earState = { score: 0, total: 0, current: null, root: null, fromDegree: null, direction: 'asc', mode: 'root', scale: 'major', answered: false, auto: false, selection: localStorage.getItem(ET_SELECT_KEY) || 'random' };
+
+  function weightForDegree(d) {
+    const s = (earStats[earState.scale] || {})[String(d.semitones)];
+    if (!s || s.total < 2) return 1.5;
+    const pct = s.correct / s.total * 100;
+    if (pct >= 80) return 0.4;
+    if (pct >= 65) return 0.8;
+    if (pct >= 50) return 1.5;
+    if (pct >= 35) return 2.5;
+    return 3.5;
+  }
+  function pickDegree(excludeSemis) {
+    const degs = earDegrees().filter(d => d.semitones !== excludeSemis);
+    if (earState.selection !== 'adaptive') {
+      return degs[Math.floor(Math.random() * degs.length)];
+    }
+    const weights = degs.map(weightForDegree);
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < degs.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return degs[i];
+    }
+    return degs[degs.length - 1];
+  }
   let earAutoTid = null;
   function startEarAuto() {
     stopEarAuto();
@@ -2086,17 +2119,15 @@
 
   function newEarQuestion() {
     earState.root = earRoots[Math.floor(Math.random() * earRoots.length)];
-    const degs = earDegrees();
     if (earState.mode === 'any') {
+      const degs = earDegrees();
       const fromIdx = Math.floor(Math.random() * degs.length);
-      let toIdx;
-      do { toIdx = Math.floor(Math.random() * degs.length); } while (toIdx === fromIdx);
       earState.fromDegree = degs[fromIdx];
-      earState.current = degs[toIdx];
+      earState.current = pickDegree(earState.fromDegree.semitones);
       $('earRoot').textContent = 'FROM · ' + earState.fromDegree.name;
     } else {
       earState.fromDegree = null;
-      earState.current = degs[Math.floor(Math.random() * degs.length)];
+      earState.current = pickDegree(null);
       $('earRoot').textContent = 'ROOT · ' + earState.root.name;
     }
     earState.answered = false;
@@ -2182,6 +2213,15 @@
     document.querySelectorAll('#earModeSeg button').forEach(x => x.classList.remove('active'));
     b.classList.add('active'); earState.mode = b.dataset.mode;
     newEarQuestion();
+  });
+  $('earSelectSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#earSelectSeg button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); earState.selection = b.dataset.sel;
+    localStorage.setItem(ET_SELECT_KEY, earState.selection);
+  });
+  document.querySelectorAll('#earSelectSeg button').forEach(b => {
+    b.classList.toggle('active', b.dataset.sel === earState.selection);
   });
   $('earResetStats').addEventListener('click', () => {
     earStats[earState.scale] = {}; saveEarStats(earStats); renderEarStats();
