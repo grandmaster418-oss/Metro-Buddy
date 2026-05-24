@@ -593,7 +593,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.27</div>
+    <div class="meta">v3.28</div>
   </header>
 
   <section class="display">
@@ -655,105 +655,28 @@
     <button class="btn" id="metroBtn" data-on="true">CLICK · ON</button>
   </div>
 
-  <!-- RANDOM ACCENT -->
-  <section class="section collapsed" id="accentSection">
-    <h2 id="accentHeader">
-      <span>RANDOM ACCENT · 4/4</span>
-      <span class="h2-right">
-        <span class="led" id="accentLed"></span>
-        <span class="chevron">▾</span>
-      </span>
+
+  <!-- BACKUP / RESTORE -->
+  <section class="section collapsed" id="backupSection">
+    <h2 id="backupHeader">
+      <span>BACKUP &amp; RESTORE</span>
+      <span class="h2-right"><span class="chevron">▾</span></span>
     </h2>
     <div class="section-body">
-      <div class="ctrl-grid">
-        <div class="pill">
-          <span class="k">GRID</span>
-          <div class="seg" id="accentGridSeg">
-            <button data-grid="8th" class="active">8TH</button>
-            <button data-grid="16th">16TH</button>
-          </div>
-        </div>
-        <div class="pill">
-          <span class="k">DENSITY</span>
-          <div class="seg" id="accentDensitySeg">
-            <button data-density="1">1</button>
-            <button data-density="2" class="active">2</button>
-            <button data-density="3">3</button>
-          </div>
-        </div>
+      <p style="font-size:10px;letter-spacing:0.06em;color:var(--dim);line-height:1.5;margin:0 0 10px;">Bundle <b style="color:var(--ink);">all</b> setlists, custom grooves, ear stats, and preferences into one file. Restore anytime — switching phones, after clearing data, etc.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn" id="backupDownloadBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">⬇ DOWNLOAD</button>
+        <button class="btn" id="backupCopyBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">📋 COPY TEXT</button>
+        <button class="btn" id="backupRestoreFileBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">⬆ RESTORE FILE</button>
+        <button class="btn" id="backupPasteBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">📥 PASTE TEXT</button>
       </div>
-      <div class="transport" style="margin-top:12px;">
-        <button class="btn" id="accentToggle" data-on="false">ACCENT · OFF</button>
-        <button class="btn" id="accentNewBtn" disabled>NEW</button>
+      <input type="file" id="backupRestoreFileInput" accept=".json" style="display:none;">
+      <textarea id="backupPasteArea" placeholder="Paste backup JSON here…" style="display:none;width:100%;min-height:90px;margin-top:10px;padding:8px 10px;background:#050505;border:1px solid var(--line);border-radius:6px;color:var(--ink);font-family:inherit;font-size:10px;"></textarea>
+      <div id="backupPasteActions" style="display:none;margin-top:8px;gap:8px;grid-template-columns:1fr 1fr;">
+        <button class="btn primary" id="backupPasteConfirm" style="height:38px;font-size:10px;letter-spacing:0.14em;">RESTORE</button>
+        <button class="btn" id="backupPasteCancel" style="height:38px;font-size:10px;letter-spacing:0.14em;">✕ CANCEL</button>
       </div>
-      <div class="accent-grid" id="accentGrid"></div>
-      <div class="accent-count-row" id="accentCountRow"></div>
-      <div class="accent-text" id="accentText">—</div>
-    </div>
-  </section>
-
-  <!-- GROOVE -->
-  <section class="section collapsed" id="grooveSection">
-    <h2 id="grooveHeader" style="cursor:pointer;">
-      <span id="grooveTitle">GROOVE · 16 STEP</span>
-      <span class="h2-right">
-        <span class="led" id="grooveLed"></span>
-        <span class="chevron">▾</span>
-      </span>
-    </h2>
-    <div class="section-body">
-      <div id="grooveGrid"></div>
-      <div class="count-row" id="countRow"></div>
-      <div class="preset-row" id="presetRow"></div>
-      <div class="save-groove-row" id="saveGrooveRow">
-        <input class="form-input" id="saveGrooveName" type="text" placeholder="Groove name..." maxlength="20" style="flex:1;height:34px;font-size:11px;padding:6px 10px;" />
-        <button class="btn primary" id="saveGrooveConfirm" style="height:34px;font-size:10px;letter-spacing:0.14em;padding:0 12px;">SAVE</button>
-        <button class="btn" id="saveGrooveCancel" style="height:34px;font-size:10px;padding:0 10px;">✕</button>
-      </div>
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <button class="clear-btn" id="saveGrooveBtn" style="flex:1;margin-top:0;">+ SAVE GROOVE</button>
-        <button class="clear-btn" id="clearTargetBtn" style="flex:1;margin-top:0;">CLEAR TARGET</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- TUNER (collapsible, off by default) -->
-  <section class="section collapsed" id="tunerSection">
-    <h2 id="tunerHeader">
-      <span>TUNER · 5-STRING BASS</span>
-      <span class="h2-right">
-        <span class="led" id="tunerLed"></span>
-        <span class="chevron">▾</span>
-      </span>
-    </h2>
-    <div class="section-body">
-      <button class="tuner-toggle" id="tunerToggle" data-on="false">START TUNER</button>
-
-      <div id="tunerError" style="display:none;"></div>
-
-      <div class="tuner-display">
-        <div class="tuner-note dim" id="tunerNote">—</div>
-        <div class="tuner-freq" id="tunerFreq">— Hz</div>
-      </div>
-
-      <div class="tuner-cents-bar">
-        <div class="center-mark"></div>
-        <div class="tuner-needle" id="tunerNeedle"></div>
-      </div>
-      <div class="tuner-cents-labels">
-        <span>−50¢</span>
-        <span>FLAT</span>
-        <span>0</span>
-        <span>SHARP</span>
-        <span>+50¢</span>
-      </div>
-
-      <div class="tuner-target-row" id="tunerTargets"></div>
-
-      <div class="tuner-help" id="tunerHelp">
-        Tap a string to focus, or AUTO to detect any note.<br>
-        Pluck steady — let the note ring.
-      </div>
+      <div id="backupMsg" style="margin-top:10px;font-size:10px;letter-spacing:0.06em;color:var(--green);min-height:14px;"></div>
     </div>
   </section>
 
@@ -838,6 +761,78 @@
     </div>
   </section>
 
+  <!-- GROOVE -->
+  <section class="section collapsed" id="grooveSection">
+    <h2 id="grooveHeader" style="cursor:pointer;">
+      <span id="grooveTitle">GROOVE · 16 STEP</span>
+      <span class="h2-right">
+        <span class="led" id="grooveLed"></span>
+        <span class="chevron">▾</span>
+      </span>
+    </h2>
+    <div class="section-body">
+      <div id="grooveGrid"></div>
+      <div class="count-row" id="countRow"></div>
+      <div class="preset-row" id="presetRow"></div>
+      <div class="save-groove-row" id="saveGrooveRow">
+        <input class="form-input" id="saveGrooveName" type="text" placeholder="Groove name..." maxlength="20" style="flex:1;height:34px;font-size:11px;padding:6px 10px;" />
+        <button class="btn primary" id="saveGrooveConfirm" style="height:34px;font-size:10px;letter-spacing:0.14em;padding:0 12px;">SAVE</button>
+        <button class="btn" id="saveGrooveCancel" style="height:34px;font-size:10px;padding:0 10px;">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="clear-btn" id="saveGrooveBtn" style="flex:1;margin-top:0;">+ SAVE GROOVE</button>
+        <button class="clear-btn" id="clearTargetBtn" style="flex:1;margin-top:0;">CLEAR TARGET</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOTES -->
+  <section class="section collapsed" id="notesSection">
+    <h2 id="notesHeader">
+      <span>NOTES</span>
+      <span class="h2-right"><span class="chevron">▾</span></span>
+    </h2>
+    <div class="section-body">
+      <textarea class="notes-pad" id="notesPad" placeholder="Practice notes, reminders, things to work on..."></textarea>
+    </div>
+  </section>
+
+  <!-- RANDOM ACCENT -->
+  <section class="section collapsed" id="accentSection">
+    <h2 id="accentHeader">
+      <span>RANDOM ACCENT · 4/4</span>
+      <span class="h2-right">
+        <span class="led" id="accentLed"></span>
+        <span class="chevron">▾</span>
+      </span>
+    </h2>
+    <div class="section-body">
+      <div class="ctrl-grid">
+        <div class="pill">
+          <span class="k">GRID</span>
+          <div class="seg" id="accentGridSeg">
+            <button data-grid="8th" class="active">8TH</button>
+            <button data-grid="16th">16TH</button>
+          </div>
+        </div>
+        <div class="pill">
+          <span class="k">DENSITY</span>
+          <div class="seg" id="accentDensitySeg">
+            <button data-density="1">1</button>
+            <button data-density="2" class="active">2</button>
+            <button data-density="3">3</button>
+          </div>
+        </div>
+      </div>
+      <div class="transport" style="margin-top:12px;">
+        <button class="btn" id="accentToggle" data-on="false">ACCENT · OFF</button>
+        <button class="btn" id="accentNewBtn" disabled>NEW</button>
+      </div>
+      <div class="accent-grid" id="accentGrid"></div>
+      <div class="accent-count-row" id="accentCountRow"></div>
+      <div class="accent-text" id="accentText">—</div>
+    </div>
+  </section>
 
   <!-- SETLIST -->
   <section class="section collapsed" id="setlistSection">
@@ -945,27 +940,43 @@
     </div>
   </section>
 
-  <!-- BACKUP / RESTORE -->
-  <section class="section collapsed" id="backupSection">
-    <h2 id="backupHeader">
-      <span>BACKUP &amp; RESTORE</span>
-      <span class="h2-right"><span class="chevron">▾</span></span>
+  <!-- TUNER (collapsible, off by default) -->
+  <section class="section collapsed" id="tunerSection">
+    <h2 id="tunerHeader">
+      <span>TUNER</span>
+      <span class="h2-right">
+        <span class="led" id="tunerLed"></span>
+        <span class="chevron">▾</span>
+      </span>
     </h2>
     <div class="section-body">
-      <p style="font-size:10px;letter-spacing:0.06em;color:var(--dim);line-height:1.5;margin:0 0 10px;">Bundle <b style="color:var(--ink);">all</b> setlists, custom grooves, ear stats, and preferences into one file. Restore anytime — switching phones, after clearing data, etc.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <button class="btn" id="backupDownloadBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">⬇ DOWNLOAD</button>
-        <button class="btn" id="backupCopyBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">📋 COPY TEXT</button>
-        <button class="btn" id="backupRestoreFileBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">⬆ RESTORE FILE</button>
-        <button class="btn" id="backupPasteBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">📥 PASTE TEXT</button>
+      <button class="tuner-toggle" id="tunerToggle" data-on="false">START TUNER</button>
+
+      <div id="tunerError" style="display:none;"></div>
+
+      <div class="tuner-display">
+        <div class="tuner-note dim" id="tunerNote">—</div>
+        <div class="tuner-freq" id="tunerFreq">— Hz</div>
       </div>
-      <input type="file" id="backupRestoreFileInput" accept=".json" style="display:none;">
-      <textarea id="backupPasteArea" placeholder="Paste backup JSON here…" style="display:none;width:100%;min-height:90px;margin-top:10px;padding:8px 10px;background:#050505;border:1px solid var(--line);border-radius:6px;color:var(--ink);font-family:inherit;font-size:10px;"></textarea>
-      <div id="backupPasteActions" style="display:none;margin-top:8px;gap:8px;grid-template-columns:1fr 1fr;">
-        <button class="btn primary" id="backupPasteConfirm" style="height:38px;font-size:10px;letter-spacing:0.14em;">RESTORE</button>
-        <button class="btn" id="backupPasteCancel" style="height:38px;font-size:10px;letter-spacing:0.14em;">✕ CANCEL</button>
+
+      <div class="tuner-cents-bar">
+        <div class="center-mark"></div>
+        <div class="tuner-needle" id="tunerNeedle"></div>
       </div>
-      <div id="backupMsg" style="margin-top:10px;font-size:10px;letter-spacing:0.06em;color:var(--green);min-height:14px;"></div>
+      <div class="tuner-cents-labels">
+        <span>−50¢</span>
+        <span>FLAT</span>
+        <span>0</span>
+        <span>SHARP</span>
+        <span>+50¢</span>
+      </div>
+
+      <div class="tuner-target-row" id="tunerTargets"></div>
+
+      <div class="tuner-help" id="tunerHelp">
+        Tap a string to focus, or AUTO to detect any note.<br>
+        Pluck steady — let the note ring.
+      </div>
     </div>
   </section>
 
@@ -1013,17 +1024,6 @@
       <button class="btn" style="width:100%;margin-top:8px;" id="qrCloseBtn">CLOSE</button>
     </div>
   </div>
-
-  <!-- NOTES -->
-  <section class="section collapsed" id="notesSection">
-    <h2 id="notesHeader">
-      <span>NOTES</span>
-      <span class="h2-right"><span class="chevron">▾</span></span>
-    </h2>
-    <div class="section-body">
-      <textarea class="notes-pad" id="notesPad" placeholder="Practice notes, reminders, things to work on..."></textarea>
-    </div>
-  </section>
 
 </div>
 
