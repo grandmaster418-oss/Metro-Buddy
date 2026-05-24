@@ -593,7 +593,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.26</div>
+    <div class="meta">v3.27</div>
   </header>
 
   <section class="display">
@@ -769,6 +769,7 @@
         <div class="seg" id="earScaleSeg">
           <button data-scale="major" class="active">MAJOR</button>
           <button data-scale="minpent">MIN PENT</button>
+          <button data-scale="chords">CHORDS</button>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -1995,6 +1996,15 @@
       ]
     },
   };
+  const CHORD_QUALITIES = [
+    { name: 'M',   semitones: 0,  intervals: [0, 4, 7]     },
+    { name: 'm',   semitones: 1,  intervals: [0, 3, 7]     },
+    { name: '7',   semitones: 2,  intervals: [0, 4, 7, 10] },
+    { name: 'm7',  semitones: 3,  intervals: [0, 3, 7, 10] },
+    { name: 'dim', semitones: 4,  intervals: [0, 3, 6]     },
+  ];
+  function isChordsMode() { return earState.scale === 'chords'; }
+  function earOptions() { return isChordsMode() ? CHORD_QUALITIES : SCALES[earState.scale].degrees; }
 
   // Roots in A2–A3 range — audible on phone speakers
   const earRoots = [
@@ -2018,7 +2028,7 @@
     return 3.5;
   }
   function pickDegree(excludeSemis) {
-    const degs = earDegrees().filter(d => d.semitones !== excludeSemis);
+    const degs = earOptions().filter(d => d.semitones !== excludeSemis);
     if (earState.selection !== 'adaptive') {
       return degs[Math.floor(Math.random() * degs.length)];
     }
@@ -2038,17 +2048,18 @@
     earAutoTid = setInterval(() => { if (!earState.answered) playCurrentInterval(); }, 2800);
   }
   function stopEarAuto() { if (earAutoTid) { clearInterval(earAutoTid); earAutoTid = null; } cancelEarAudio(); }
-  function earDegrees() { return SCALES[earState.scale].degrees; }
+  function earDegrees() { return SCALES[earState.scale] ? SCALES[earState.scale].degrees : []; }
 
   const ET_STATS_KEY = 'metro-buddy-ear-stats-v2';
   function loadEarStats() {
-    try { return JSON.parse(localStorage.getItem(ET_STATS_KEY)) || { major: {}, minpent: {} }; }
-    catch { return { major: {}, minpent: {} }; }
+    try { return JSON.parse(localStorage.getItem(ET_STATS_KEY)) || { major: {}, minpent: {}, chords: {} }; }
+    catch { return { major: {}, minpent: {}, chords: {} }; }
   }
   function saveEarStats(s) { localStorage.setItem(ET_STATS_KEY, JSON.stringify(s)); }
   let earStats = loadEarStats();
   if (!earStats.major)   earStats.major   = {};
   if (!earStats.minpent) earStats.minpent = {};
+  if (!earStats.chords)  earStats.chords  = {};
 
   function recordEarStat(semitones, correct) {
     const bucket = earStats[earState.scale];
@@ -2065,7 +2076,7 @@
     if (!el) return;
     el.innerHTML = '';
     const bucket = earStats[earState.scale];
-    earDegrees().forEach(iv => {
+    earOptions().forEach(iv => {
       const s = bucket[String(iv.semitones)];
       const total = s ? s.total : 0;
       const correct = s ? s.correct : 0;
@@ -2126,7 +2137,34 @@
     earActiveNotes = earActiveNotes.filter(n => n.endsAt > ctx.currentTime - 0.2);
   }
 
+  function playChord(intervals, mode) {
+    cancelEarAudio();
+    const now = audioCtx.currentTime + 0.1;
+    const rf = earState.root.freq;
+    const freqs = intervals.map(iv => rf * Math.pow(2, iv / 12));
+    if (mode === 'desc') {
+      freqs.slice().reverse().forEach((f, i) => playBassNote(f, now + i * 0.45, 0.55));
+    } else if (mode === 'asc') {
+      freqs.forEach((f, i) => playBassNote(f, now + i * 0.45, 0.55));
+    } else {
+      // block — all notes together, longer duration
+      freqs.forEach(f => playBassNote(f, now, 1.2));
+    }
+  }
+
   function playCurrentInterval() {
+    if (isChordsMode()) {
+      const ch = earState.current;
+      let mode = 'block';
+      if (earState.direction === 'asc') mode = 'asc';
+      else if (earState.direction === 'desc') mode = 'desc';
+      else if (earState.direction === 'both') {
+        const r = Math.random();
+        mode = r < 0.34 ? 'block' : (r < 0.67 ? 'asc' : 'desc');
+      }
+      playChord(ch.intervals, mode);
+      return;
+    }
     cancelEarAudio();
     const now = audioCtx.currentTime + 0.1;
     const rf = earState.root.freq;
@@ -2193,6 +2231,18 @@
 
   function playFullScale() {
     cancelEarAudio();
+    if (isChordsMode()) {
+      // play each chord quality back-to-back as a reference
+      const now = audioCtx.currentTime + 0.1;
+      const rf = earState.root.freq;
+      const gap = 1.4;
+      CHORD_QUALITIES.forEach((ch, i) => {
+        ch.intervals.forEach(iv => {
+          playBassNote(rf * Math.pow(2, iv / 12), now + i * gap, 1.2);
+        });
+      });
+      return;
+    }
     const now = audioCtx.currentTime + 0.1;
     const rf = earState.root.freq;
     const degs = earDegrees();
@@ -2200,14 +2250,17 @@
     degs.forEach((iv, i) => {
       playBassNote(rf * Math.pow(2, iv.semitones / 12), now + i * step, 0.45);
     });
-    // octave root at end
     playBassNote(rf * 2, now + degs.length * step, 0.6);
   }
 
   function newEarQuestion() {
     earState.root = earRoots[Math.floor(Math.random() * earRoots.length)];
-    if (earState.mode === 'any') {
-      const degs = earDegrees();
+    if (isChordsMode()) {
+      earState.fromDegree = null;
+      earState.current = pickDegree(null);
+      $('earRoot').textContent = 'ROOT · ' + earState.root.name;
+    } else if (earState.mode === 'any') {
+      const degs = earOptions();
       const fromIdx = Math.floor(Math.random() * degs.length);
       earState.fromDegree = degs[fromIdx];
       earState.current = pickDegree(earState.fromDegree.semitones);
@@ -2218,7 +2271,8 @@
       $('earRoot').textContent = 'ROOT · ' + earState.root.name;
     }
     earState.answered = false;
-    $('earStatus').textContent = earState.auto ? 'LISTENING…' : 'WHICH DEGREE?';
+    const promptText = isChordsMode() ? 'WHICH CHORD?' : 'WHICH DEGREE?';
+    $('earStatus').textContent = earState.auto ? 'LISTENING…' : promptText;
     $('earStatus').className = 'ear-status';
     document.querySelectorAll('.ear-answer').forEach(b => {
       b.classList.remove('correct', 'wrong'); b.disabled = false;
@@ -2241,14 +2295,15 @@
 
   function buildEarAnswers() {
     const el = $('earAnswers'); el.innerHTML = '';
-    earDegrees().forEach(iv => {
+    earOptions().forEach(iv => {
       const b = document.createElement('button');
       b.className = 'ear-answer'; b.textContent = iv.name; b.dataset.semi = iv.semitones;
       b.addEventListener('click', async () => {
         if (earState.answered) return;
         await resumeAudio();
         stopEarAuto();
-        playDegreeFromRoot(iv.semitones);
+        if (isChordsMode()) playChord(iv.intervals, 'block');
+        else playDegreeFromRoot(iv.semitones);
         earState.answered = true; earState.total++;
         const ok = iv.semitones === earState.current.semitones;
         if (ok) { earState.score++; b.classList.add('correct'); $('earStatus').textContent = '✓ ' + iv.name; $('earStatus').className = 'ear-status correct'; }
@@ -2295,6 +2350,28 @@
   $('droneKey').addEventListener('change', () => {
     if ($('droneBtn').dataset.on === 'true') startDrone(+$('droneKey').value);
   });
+  function updateEarUIForScale() {
+    const chords = isChordsMode();
+    // hide MODE pill when in chord mode (ROOT→DEG / DEG→DEG doesn't apply)
+    const modePill = $('earModeSeg').closest('.pill');
+    if (modePill) modePill.style.display = chords ? 'none' : '';
+    // swap DIRECTION labels in chord mode
+    const dirBtns = document.querySelectorAll('#earDirSeg button');
+    if (chords) {
+      const labels = { asc: 'UP', desc: 'DOWN', both: 'MIX' };
+      dirBtns.forEach(b => { if (labels[b.dataset.dir]) b.textContent = labels[b.dataset.dir]; });
+      // add a BLOCK option by repurposing — actually keep 3, just rename text
+      // We'll keep direction as asc/desc/both but the playChord branches handle them
+    } else {
+      const labels = { asc: 'UP', desc: 'DOWN', both: 'BOTH' };
+      dirBtns.forEach(b => { if (labels[b.dataset.dir]) b.textContent = labels[b.dataset.dir]; });
+    }
+    // update PLAY SCALE button label
+    $('earScaleBtn').textContent = chords ? 'PLAY ALL CHORDS' : 'PLAY SCALE';
+    // force mode back to root if in chord mode
+    if (chords) earState.mode = 'root';
+  }
+
   $('earScaleSeg').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     document.querySelectorAll('#earScaleSeg button').forEach(x => x.classList.remove('active'));
@@ -2302,6 +2379,7 @@
     earState.scale = b.dataset.scale;
     earState.score = 0; earState.total = 0;
     $('earScore').textContent = '0 / 0';
+    updateEarUIForScale();
     buildEarAnswers(); newEarQuestion(); renderEarStats();
   });
   $('earDirSeg').addEventListener('click', e => {
@@ -2327,7 +2405,7 @@
   $('earResetStats').addEventListener('click', () => {
     earStats[earState.scale] = {}; saveEarStats(earStats); renderEarStats();
   });
-  buildEarAnswers(); newEarQuestion(); renderEarStats();
+  updateEarUIForScale(); buildEarAnswers(); newEarQuestion(); renderEarStats();
 
 
   /* ============================================================
