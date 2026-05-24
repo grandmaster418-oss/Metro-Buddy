@@ -329,6 +329,7 @@
     height: 18px; background: #0a0a0a;
     border: 1px solid var(--line); border-radius: 2px;
     transition: background .1s ease;
+    position: relative;
   }
   .accent-cell.beat-start { border-color: #383838; }
   .accent-cell.beat-one { border-color: var(--target); }
@@ -336,6 +337,12 @@
     background: var(--accent); border-color: var(--accent-soft);
     box-shadow: 0 0 8px rgba(255,91,31,0.4);
   }
+  @keyframes accentFlash {
+    0%   { transform: scale(1);   background: var(--accent); box-shadow: 0 0 8px rgba(255,91,31,0.4); }
+    18%  { transform: scale(1.7); background: #fff2bc;       box-shadow: 0 0 28px rgba(255,217,102,0.95), 0 0 48px rgba(255,91,31,0.7); }
+    100% { transform: scale(1);   background: var(--accent); box-shadow: 0 0 8px rgba(255,91,31,0.4); }
+  }
+  .accent-cell.firing { animation: accentFlash .38s ease-out; z-index: 5; }
   .accent-text {
     margin-top: 8px; font-size: 11px; color: var(--accent-soft);
     letter-spacing: 0.14em; text-align: center;
@@ -593,7 +600,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.28</div>
+    <div class="meta">v3.29</div>
   </header>
 
   <section class="display">
@@ -764,7 +771,7 @@
   <!-- GROOVE -->
   <section class="section collapsed" id="grooveSection">
     <h2 id="grooveHeader" style="cursor:pointer;">
-      <span id="grooveTitle">GROOVE · 16 STEP</span>
+      <span id="grooveTitle">GROOVE</span>
       <span class="h2-right">
         <span class="led" id="grooveLed"></span>
         <span class="chevron">▾</span>
@@ -800,7 +807,7 @@
   <!-- RANDOM ACCENT -->
   <section class="section collapsed" id="accentSection">
     <h2 id="accentHeader">
-      <span>RANDOM ACCENT · 4/4</span>
+      <span>RANDOM ACCENT</span>
       <span class="h2-right">
         <span class="led" id="accentLed"></span>
         <span class="chevron">▾</span>
@@ -1409,7 +1416,7 @@
     document.querySelectorAll('#meterSeg button').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     state.meter = b.dataset.meter;
-    grooveTitle.textContent = state.meter === '6-8' ? 'GROOVE · 12 STEP (6/8)' : 'GROOVE · 16 STEP';
+    grooveTitle.textContent = 'GROOVE';
     applyPreset(state.activePreset);
     renderBeatIndicator();
     renderCountRow();
@@ -1514,6 +1521,16 @@
     document.querySelectorAll('.step.playhead').forEach(e => e.classList.remove('playhead'));
     document.querySelectorAll(`.step[data-idx="${stepIndex}"]`).forEach(e => e.classList.add('playhead'));
 
+    if (state.accent.on && state.meter === '4-4' && state.accent.positions.includes(stepIndex)) {
+      const cells = $('accentGrid').querySelectorAll('.accent-cell');
+      const cell = cells[stepIndex];
+      if (cell) {
+        cell.classList.remove('firing');
+        void cell.offsetWidth;
+        cell.classList.add('firing');
+      }
+    }
+
     const m = meterDefs[state.meter];
     if (stepIndex % m.stepsPerVisualBeat === 0) {
       const beatIdx = stepIndex / m.stepsPerVisualBeat;
@@ -1571,7 +1588,7 @@
       document.querySelectorAll('#meterSeg button').forEach(x => x.classList.remove('active'));
       const mb = document.querySelector('#meterSeg button[data-meter="' + groove.meter + '"]');
       if (mb) mb.classList.add('active');
-      grooveTitle.textContent = state.meter === '6-8' ? 'GROOVE · 12 STEP (6/8)' : 'GROOVE · 16 STEP';
+      grooveTitle.textContent = 'GROOVE';
       renderBeatIndicator();
       renderCountRow();
     }
