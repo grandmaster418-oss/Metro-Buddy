@@ -593,7 +593,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.25</div>
+    <div class="meta">v3.26</div>
   </header>
 
   <section class="display">
@@ -787,6 +787,23 @@
         <button class="btn" id="earAutoBtn" data-on="false" style="height:42px;font-size:10px;letter-spacing:0.18em;">AUTO · OFF</button>
         <button class="btn" id="earScaleBtn" style="height:42px;font-size:10px;letter-spacing:0.18em;">PLAY SCALE</button>
       </div>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:stretch;">
+        <button class="btn" id="droneBtn" data-on="false" style="flex:1;height:42px;font-size:10px;letter-spacing:0.18em;">DRONE · OFF</button>
+        <select id="droneKey" class="section-type-sel" style="width:78px;height:42px;font-size:11px;text-align:center;">
+          <option value="110.00">A</option>
+          <option value="116.54">Bb</option>
+          <option value="123.47">B</option>
+          <option value="130.81" selected>C</option>
+          <option value="138.59">C#</option>
+          <option value="146.83">D</option>
+          <option value="155.56">Eb</option>
+          <option value="164.81">E</option>
+          <option value="174.61">F</option>
+          <option value="185.00">F#</option>
+          <option value="196.00">G</option>
+          <option value="207.65">Ab</option>
+        </select>
+      </div>
       <div class="ear-answers" id="earAnswers"></div>
       <div class="pill" style="margin-top:10px;">
         <span class="k">MODE</span>
@@ -924,6 +941,30 @@
         </div>
       </div>
       <div id="songList"></div>
+    </div>
+  </section>
+
+  <!-- BACKUP / RESTORE -->
+  <section class="section collapsed" id="backupSection">
+    <h2 id="backupHeader">
+      <span>BACKUP &amp; RESTORE</span>
+      <span class="h2-right"><span class="chevron">▾</span></span>
+    </h2>
+    <div class="section-body">
+      <p style="font-size:10px;letter-spacing:0.06em;color:var(--dim);line-height:1.5;margin:0 0 10px;">Bundle <b style="color:var(--ink);">all</b> setlists, custom grooves, ear stats, and preferences into one file. Restore anytime — switching phones, after clearing data, etc.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn" id="backupDownloadBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">⬇ DOWNLOAD</button>
+        <button class="btn" id="backupCopyBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">📋 COPY TEXT</button>
+        <button class="btn" id="backupRestoreFileBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">⬆ RESTORE FILE</button>
+        <button class="btn" id="backupPasteBtn" style="height:44px;font-size:10px;letter-spacing:0.14em;">📥 PASTE TEXT</button>
+      </div>
+      <input type="file" id="backupRestoreFileInput" accept=".json" style="display:none;">
+      <textarea id="backupPasteArea" placeholder="Paste backup JSON here…" style="display:none;width:100%;min-height:90px;margin-top:10px;padding:8px 10px;background:#050505;border:1px solid var(--line);border-radius:6px;color:var(--ink);font-family:inherit;font-size:10px;"></textarea>
+      <div id="backupPasteActions" style="display:none;margin-top:8px;gap:8px;grid-template-columns:1fr 1fr;">
+        <button class="btn primary" id="backupPasteConfirm" style="height:38px;font-size:10px;letter-spacing:0.14em;">RESTORE</button>
+        <button class="btn" id="backupPasteCancel" style="height:38px;font-size:10px;letter-spacing:0.14em;">✕ CANCEL</button>
+      </div>
+      <div id="backupMsg" style="margin-top:10px;font-size:10px;letter-spacing:0.06em;color:var(--green);min-height:14px;"></div>
     </div>
   </section>
 
@@ -2104,6 +2145,52 @@
     playBassNote(b, now + 0.85, 0.7);
   }
 
+  let droneNodes = null;
+  function startDrone(freq) {
+    stopDrone(true);
+    ensureAudio();
+    const ctx = audioCtx;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0, ctx.currentTime);
+    out.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.4);
+    out.connect(masterGain);
+    const layers = [
+      { mul: 0.5,  gain: 0.20, type: 'sine'     }, // octave below
+      { mul: 1.0,  gain: 0.18, type: 'sine'     }, // fundamental
+      { mul: 1.0,  gain: 0.10, type: 'triangle', detune: 6 },
+      { mul: 2.0,  gain: 0.05, type: 'sine'     }, // octave above
+    ];
+    const oscs = [];
+    layers.forEach(L => {
+      const osc = ctx.createOscillator();
+      osc.type = L.type;
+      osc.frequency.value = freq * L.mul;
+      if (L.detune) osc.detune.value = L.detune;
+      const g = ctx.createGain();
+      g.gain.value = L.gain;
+      osc.connect(g).connect(out);
+      osc.start();
+      oscs.push(osc);
+    });
+    droneNodes = { out, oscs };
+  }
+  function stopDrone(silent) {
+    if (!droneNodes || !audioCtx) return;
+    const { out, oscs } = droneNodes;
+    droneNodes = null;
+    const ctx = audioCtx;
+    const fade = silent ? 0.02 : 0.3;
+    try {
+      out.gain.cancelScheduledValues(ctx.currentTime);
+      out.gain.setValueAtTime(out.gain.value, ctx.currentTime);
+      out.gain.linearRampToValueAtTime(0, ctx.currentTime + fade);
+    } catch {}
+    setTimeout(() => {
+      oscs.forEach(o => { try { o.stop(); } catch {} });
+      try { out.disconnect(); } catch {}
+    }, Math.ceil(fade * 1000) + 50);
+  }
+
   function playFullScale() {
     cancelEarAudio();
     const now = audioCtx.currentTime + 0.1;
@@ -2194,6 +2281,20 @@
     else stopEarAuto();
   });
   $('earScaleBtn').addEventListener('click', async () => { await resumeAudio(); playFullScale(); });
+  $('droneBtn').addEventListener('click', async () => {
+    const btn = $('droneBtn');
+    const on = btn.dataset.on !== 'true';
+    btn.dataset.on = on;
+    btn.textContent = 'DRONE · ' + (on ? 'ON' : 'OFF');
+    btn.style.background = on ? 'linear-gradient(180deg,var(--accent),#c83f0e)' : '';
+    btn.style.color = on ? '#1a0a02' : '';
+    btn.style.borderColor = on ? '#2a0d00' : '';
+    if (on) { await resumeAudio(); startDrone(+$('droneKey').value); }
+    else stopDrone();
+  });
+  $('droneKey').addEventListener('change', () => {
+    if ($('droneBtn').dataset.on === 'true') startDrone(+$('droneKey').value);
+  });
   $('earScaleSeg').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     document.querySelectorAll('#earScaleSeg button').forEach(x => x.classList.remove('active'));
@@ -2934,6 +3035,86 @@
   notesPad.value = localStorage.getItem(NOTES_KEY) || '';
   notesPad.addEventListener('input', () => localStorage.setItem(NOTES_KEY, notesPad.value));
   $('notesHeader').addEventListener('click', () => $('notesSection').classList.toggle('collapsed'));
+
+  /* ============================================================
+     BACKUP & RESTORE — all app data
+  ============================================================ */
+  const BACKUP_KEYS = [
+    'metro-buddy-setlists',
+    'metro-buddy-active-sl',
+    'metro-buddy-ear-stats-v2',
+    'metro-buddy-ear-select',
+    'metro-buddy-custom-grooves',
+    'metro-buddy-notes',
+  ];
+  function buildBackupJSON() {
+    const data = { app: 'metro-buddy', version: 1, exportedAt: new Date().toISOString(), data: {} };
+    BACKUP_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) data.data[k] = v; });
+    return JSON.stringify(data, null, 2);
+  }
+  function restoreBackupJSON(raw) {
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.app !== 'metro-buddy' || !parsed.data) throw new Error('Not a Metro Buddy backup file');
+    Object.entries(parsed.data).forEach(([k, v]) => {
+      if (BACKUP_KEYS.includes(k) && typeof v === 'string') localStorage.setItem(k, v);
+    });
+  }
+  function flashBackupMsg(text, color) {
+    const el = $('backupMsg');
+    el.textContent = text;
+    el.style.color = color || 'var(--green)';
+    if (text) setTimeout(() => { if (el.textContent === text) el.textContent = ''; }, 4000);
+  }
+
+  $('backupHeader').addEventListener('click', () => $('backupSection').classList.toggle('collapsed'));
+  $('backupDownloadBtn').addEventListener('click', () => {
+    const blob = new Blob([buildBackupJSON()], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.download = 'metro-buddy-backup-' + stamp + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    flashBackupMsg('✓ Downloaded backup file');
+  });
+  $('backupCopyBtn').addEventListener('click', () => {
+    const text = buildBackupJSON();
+    navigator.clipboard.writeText(text).then(
+      () => flashBackupMsg('✓ Copied to clipboard — paste it anywhere safe'),
+      () => flashBackupMsg('✗ Clipboard blocked — use DOWNLOAD instead', 'var(--accent)')
+    );
+  });
+  $('backupRestoreFileBtn').addEventListener('click', () => $('backupRestoreFileInput').click());
+  $('backupRestoreFileInput').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    if (!confirm('Restore from this file? This will overwrite your current setlists, grooves, and stats.')) {
+      $('backupRestoreFileInput').value = ''; return;
+    }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try { restoreBackupJSON(ev.target.result); flashBackupMsg('✓ Restored — reloading…'); setTimeout(() => location.reload(), 700); }
+      catch (err) { flashBackupMsg('✗ ' + err.message, 'var(--accent)'); }
+      $('backupRestoreFileInput').value = '';
+    };
+    reader.readAsText(file);
+  });
+  $('backupPasteBtn').addEventListener('click', () => {
+    $('backupPasteArea').style.display = 'block';
+    $('backupPasteActions').style.display = 'grid';
+    $('backupPasteArea').focus();
+  });
+  $('backupPasteCancel').addEventListener('click', () => {
+    $('backupPasteArea').value = '';
+    $('backupPasteArea').style.display = 'none';
+    $('backupPasteActions').style.display = 'none';
+  });
+  $('backupPasteConfirm').addEventListener('click', () => {
+    const raw = $('backupPasteArea').value.trim();
+    if (!raw) { $('backupPasteArea').focus(); return; }
+    if (!confirm('Restore from pasted data? This will overwrite your current setlists, grooves, and stats.')) return;
+    try { restoreBackupJSON(raw); flashBackupMsg('✓ Restored — reloading…'); setTimeout(() => location.reload(), 700); }
+    catch (err) { flashBackupMsg('✗ ' + err.message, 'var(--accent)'); }
+  });
 
 })();
 </script>
