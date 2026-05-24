@@ -600,7 +600,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.32</div>
+    <div class="meta">v3.33</div>
   </header>
 
   <section class="display">
@@ -2486,7 +2486,7 @@
     if (idx >= 0) { lists[idx].songs = songs; saveSetlists(lists); }
   }
 
-  const SEC_TYPES = ['Intro','V','Pre','C','Break','Bridge','Refrain','Tag','Inter','Instru','Turn','Outro','Solo'];
+  const SEC_TYPES = ['Intro','V','Pre','C','Break','Bridge','Refrain','Tag','Inter','Instru','Turn','Vamp','Outro','Solo'];
   let editingId = null;
 
   function renderSetlistTabs() {
@@ -2888,7 +2888,7 @@
     'Intro':'INTRO', 'V':'VERSE', 'Pre':'PRE-CHORUS', 'C':'CHORUS',
     'Break':'BREAK', 'Bridge':'BRIDGE', 'Refrain':'REFRAIN', 'Tag':'TAG',
     'Inter':'INTERLUDE', 'Instru':'INSTRUMENTAL', 'Turn':'TURN',
-    'Outro':'OUTRO', 'Solo':'SOLO',
+    'Vamp':'VAMP', 'Outro':'OUTRO', 'Solo':'SOLO',
   };
   function gigLabel(type) { return GIG_LABELS[type] || type.toUpperCase(); }
   const gig = { active: false, songs: [], songIdx: 0, sectionIdx: 0, secondsLeft: 0, totalSec: 0, paused: false, tid: null };
