@@ -600,7 +600,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.30</div>
+    <div class="meta">v3.31</div>
   </header>
 
   <section class="display">
@@ -1393,9 +1393,11 @@
     document.querySelectorAll('.beat.active').forEach(e => e.classList.remove('active'));
   }
 
+  const BPM_KEY = 'metro-buddy-bpm';
   function setBPM(v) {
     v = Math.max(30, Math.min(280, Math.round(v)));
     state.bpm = v; bpmNum.textContent = v; bpmSlider.value = v;
+    localStorage.setItem(BPM_KEY, v);
     for (const [thr,name] of tempoMarks) if (v < thr) { tempoMark.textContent = '— ' + name; break; }
   }
   bpmSlider.addEventListener('input', e => setBPM(+e.target.value));
@@ -1708,7 +1710,8 @@
   });
 
   buildPresetRow();
-  setBPM(100);
+  const savedBpm = +localStorage.getItem(BPM_KEY);
+  setBPM(savedBpm >= 30 && savedBpm <= 280 ? savedBpm : 100);
   renderBeatIndicator();
   renderCountRow();
   renderAccentGrid();
@@ -3141,6 +3144,7 @@
     'metro-buddy-ear-select',
     'metro-buddy-custom-grooves',
     'metro-buddy-notes',
+    'metro-buddy-bpm',
   ];
   function buildBackupJSON() {
     const data = { app: 'metro-buddy', version: 1, exportedAt: new Date().toISOString(), data: {} };
