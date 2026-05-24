@@ -1,7 +1,7 @@
 /* Metro Buddy — service worker
    Cache-first with version-busting. Bump CACHE_VERSION to force refresh. */
 
-const CACHE_VERSION = 'metro-buddy-v3.31';
+const CACHE_VERSION = 'metro-buddy-v3.32';
 const ASSETS = [
   './',
   './index.html',
@@ -14,7 +14,9 @@ const ASSETS = [
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_VERSION).then((cache) =>
+      cache.addAll(ASSETS.map((a) => new Request(a, { cache: 'reload' })))
+    )
   );
   self.skipWaiting();
 });

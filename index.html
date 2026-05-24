@@ -600,7 +600,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.31</div>
+    <div class="meta">v3.32</div>
   </header>
 
   <section class="display">
@@ -1729,8 +1729,19 @@
   playBtn.addEventListener('click', () => { if (state.playing) requestWakeLock(); });
 
   if ('serviceWorker' in navigator) {
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(err => {
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        // Poll for updates every time the tab is focused
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update().catch(() => {});
+        });
+      }).catch(err => {
         console.warn('SW registration failed:', err);
       });
     });
