@@ -653,7 +653,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.40</div>
+    <div class="meta">v3.41</div>
   </header>
 
   <section class="display">
@@ -2635,6 +2635,13 @@
     if (!getActiveId() || !loadSetlists().find(l => String(l.id) === getActiveId())) {
       setActiveId(loadSetlists()[0].id);
     }
+    // Migrate song.notes → song.chords (one-time, idempotent)
+    const lists = loadSetlists();
+    let mutated = false;
+    lists.forEach(l => (l.songs || []).forEach(s => {
+      if (s.notes && !s.chords) { s.chords = s.notes; delete s.notes; mutated = true; }
+    }));
+    if (mutated) saveSetlists(lists);
   })();
 
   function loadSongs() {
