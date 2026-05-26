@@ -579,6 +579,21 @@
   .import-banner .transport { margin: 0; }
 
   /* NOTES */
+  /* HOW TO */
+  .howto-group { border-top: 1px solid var(--rule); padding: 10px 0 4px; }
+  .howto-group:first-child { border-top: none; padding-top: 2px; }
+  .howto-title {
+    font-size: 11px; letter-spacing: 0.22em; color: var(--accent-soft);
+    font-weight: 700; margin: 0 0 6px;
+  }
+  .howto-list { font-size: 11px; color: var(--ink); line-height: 1.65; letter-spacing: 0.02em; margin: 0; padding-left: 14px; }
+  .howto-list li { margin: 3px 0; }
+  .howto-list b { color: var(--accent); font-weight: 600; }
+  .howto-list code {
+    background: #050505; border: 1px solid var(--line); border-radius: 3px;
+    padding: 0 4px; font-size: 10px; color: var(--accent-soft);
+  }
+
   .notes-pad {
     width: 100%; min-height: 140px; padding: 10px 12px;
     background: #0a0a0a; border: 1px solid var(--line); border-radius: 8px;
@@ -600,7 +615,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.34</div>
+    <div class="meta">v3.35</div>
   </header>
 
   <section class="display">
@@ -790,6 +805,100 @@
         <button class="clear-btn" id="saveGrooveBtn" style="flex:1;margin-top:0;">+ SAVE GROOVE</button>
         <button class="clear-btn" id="clearTargetBtn" style="flex:1;margin-top:0;">CLEAR TARGET</button>
       </div>
+    </div>
+  </section>
+
+  <!-- HOW TO -->
+  <section class="section collapsed" id="howtoSection">
+    <h2 id="howtoHeader">
+      <span>HOW TO</span>
+      <span class="h2-right"><span class="chevron">▾</span></span>
+    </h2>
+    <div class="section-body">
+
+      <div class="howto-group">
+        <div class="howto-title">METRONOME</div>
+        <ul class="howto-list">
+          <li>Drag the BPM slider or use <b>+ / −</b> (hold to fast-step). <b>TAP</b> a beat 2+ times to set tempo.</li>
+          <li><b>METER</b>: 4/4 or 6/8. <b>CLICK SUB</b>: 1 (quarters), 8TH, 16TH.</li>
+          <li><b>FEEL</b>: STRAIGHT or HALF-TIME. <b>VOL</b> slider sets master output for the whole app.</li>
+          <li>Keys: <code>Space</code>=play, <code>←/→</code>=BPM ±1 (<code>Shift</code> for ±5), <code>M</code>=click on/off, <code>T</code>=tap, <code>H</code>=half-time.</li>
+          <li>Your last BPM is remembered between sessions.</li>
+        </ul>
+      </div>
+
+      <div class="howto-group">
+        <div class="howto-title">GROOVE</div>
+        <ul class="howto-list">
+          <li>Tap cells to program kick / snare / hat / target. Tap a track label to cycle <b>100 → 50 → OFF</b>.</li>
+          <li>Presets: <b>ROCK · FUNK · HIP-HOP · BOSSA · CCM</b>. Work in both 4/4 and 6/8.</li>
+          <li><b>+ SAVE GROOVE</b> stores your current pattern with name + meter + feel. Tap a dashed preset to recall; <b>×</b> deletes.</li>
+          <li>Target track is your practice line — <b>CLEAR TARGET</b> wipes only that track.</li>
+        </ul>
+      </div>
+
+      <div class="howto-group">
+        <div class="howto-title">RANDOM ACCENT</div>
+        <ul class="howto-list">
+          <li>Pick <b>GRID</b> (8TH/16TH) and <b>DENSITY</b> (how many accents per bar). Tap <b>ACCENT · ON</b>.</li>
+          <li><b>NEW</b> randomizes a new accent pattern. The accent <b>replaces</b> the regular click on that step.</li>
+          <li>The lit cell pulses bright cream-yellow when its accent fires — visual ear-training aid.</li>
+        </ul>
+      </div>
+
+      <div class="howto-group">
+        <div class="howto-title">EAR TRAINING</div>
+        <ul class="howto-list">
+          <li><b>SCALE</b>: MAJOR / MIN PENT / CHORDS. CHORDS = M/m/7/m7/dim quality recognition.</li>
+          <li><b>PLAY</b> hears the interval; tap a degree/chord button to <b>guess</b> (it plays the answer back).</li>
+          <li><b>AUTO</b>: loops the question every ~3s until you answer. <b>DRONE</b>: sustained root pad while you practice.</li>
+          <li><b>MODE</b>: ROOT→DEG (always from root) or DEG→DEG (any two degrees).</li>
+          <li><b>PICK</b>: RANDOM = equal weight; <b>ADAPTIVE</b> = drills your weak degrees more (uses your stats).</li>
+          <li><b>DEGREE ACCURACY</b> grid shows %correct per degree. Green ≥70%, orange below. <b>RESET</b> clears active scale only.</li>
+        </ul>
+      </div>
+
+      <div class="howto-group">
+        <div class="howto-title">SETLIST</div>
+        <ul class="howto-list">
+          <li>Tabs at the top = multiple named setlists. <b>+ NEW</b> creates one, double-tap an active tab to rename, <b>DEL</b> deletes.</li>
+          <li><b>+ ADD SONG</b>: title, key, BPM, meter. Add sections (V, C, Bridge, Vamp…) with bars+seconds. BARS auto-fills SEC from current BPM/meter.</li>
+          <li>Each section can have a short <b>NOTE</b> (e.g. "capo 2", "no bass") — shown in gig mode under the section name.</li>
+          <li>Drag the orange <b>⠿</b> handle to reorder. <b>MOVE</b> sends a song to another setlist.</li>
+          <li><b>LOAD</b> sets BPM+meter only. <b>GIG</b> starts full-screen mode from that song.</li>
+          <li>Share: <b>⬇ EXPORT</b> file, <b>🔗 LINK</b> URL, <b>⬛ QR</b> code. Imports open a banner — pick which setlist to import INTO.</li>
+        </ul>
+      </div>
+
+      <div class="howto-group">
+        <div class="howto-title">GIG MODE</div>
+        <ul class="howto-list">
+          <li>Starts <b>paused</b>. The blue dot flashes beat 1 silently — tap <b>RESUME</b> on the downbeat to sync.</li>
+          <li>Big text shows section. Countdown auto-advances. Section <b>NOTE</b> appears below the name.</li>
+          <li><b>−1 BEAT / +1 BEAT</b>: nudge if you drift. <b>PREV / NEXT</b>: jump sections. <b>NEXT SONG</b>: skip ahead.</li>
+          <li>If you close/reload mid-gig, a <b>RESUME GIG?</b> banner restores where you were.</li>
+        </ul>
+      </div>
+
+      <div class="howto-group">
+        <div class="howto-title">TUNER</div>
+        <ul class="howto-list">
+          <li><b>START TUNER</b> asks for mic permission. Pluck a string and let it ring.</li>
+          <li>5-string bass strings (B0/E1/A1/D2/G2) plus <b>AUTO</b>. Tap a string to lock detection to that note.</li>
+          <li>Green needle in the middle = in tune. Red = needs adjustment (left = flat, right = sharp).</li>
+        </ul>
+      </div>
+
+      <div class="howto-group">
+        <div class="howto-title">BACKUP &amp; RESTORE</div>
+        <ul class="howto-list">
+          <li>Bundles <b>everything</b>: setlists, custom grooves, ear stats, notes, BPM, preferences.</li>
+          <li><b>⬇ DOWNLOAD</b> saves a .json file. <b>📋 COPY TEXT</b> puts it on your clipboard.</li>
+          <li><b>⬆ RESTORE FILE</b> or <b>📥 PASTE TEXT</b> reloads everything. Confirms before overwriting.</li>
+          <li>Do this before switching phones or clearing browser data.</li>
+        </ul>
+      </div>
+
     </div>
   </section>
 
@@ -3183,6 +3292,7 @@
   notesPad.value = localStorage.getItem(NOTES_KEY) || '';
   notesPad.addEventListener('input', () => localStorage.setItem(NOTES_KEY, notesPad.value));
   $('notesHeader').addEventListener('click', () => $('notesSection').classList.toggle('collapsed'));
+  $('howtoHeader').addEventListener('click', () => $('howtoSection').classList.toggle('collapsed'));
 
   /* ============================================================
      BACKUP & RESTORE — all app data
