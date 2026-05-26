@@ -653,7 +653,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.41</div>
+    <div class="meta">v3.42</div>
   </header>
 
   <section class="display">
@@ -737,6 +737,17 @@
         <button class="btn" id="backupPasteCancel" style="height:38px;font-size:10px;letter-spacing:0.14em;">✕ CANCEL</button>
       </div>
       <div id="backupMsg" style="margin-top:10px;font-size:10px;letter-spacing:0.06em;color:var(--green);min-height:14px;"></div>
+    </div>
+  </section>
+
+  <!-- CHORDS -->
+  <section class="section collapsed" id="chordsSection">
+    <h2 id="chordsHeader">
+      <span>CHORDS</span>
+      <span class="h2-right"><span class="chevron">▾</span></span>
+    </h2>
+    <div class="section-body">
+      <textarea class="notes-pad" id="chordsPad" placeholder="Chord charts, progressions, voicings, key references..." style="color:var(--accent-soft);"></textarea>
     </div>
   </section>
 
@@ -940,17 +951,6 @@
         </ul>
       </div>
 
-    </div>
-  </section>
-
-  <!-- NOTES -->
-  <section class="section collapsed" id="notesSection">
-    <h2 id="notesHeader">
-      <span>NOTES</span>
-      <span class="h2-right"><span class="chevron">▾</span></span>
-    </h2>
-    <div class="section-body">
-      <textarea class="notes-pad" id="notesPad" placeholder="Practice notes, reminders, things to work on..."></textarea>
     </div>
   </section>
 
@@ -3434,11 +3434,17 @@
   /* ============================================================
      MEMO PAD
   ============================================================ */
-  const NOTES_KEY = 'metro-buddy-notes';
-  const notesPad = $('notesPad');
-  notesPad.value = localStorage.getItem(NOTES_KEY) || '';
-  notesPad.addEventListener('input', () => localStorage.setItem(NOTES_KEY, notesPad.value));
-  $('notesHeader').addEventListener('click', () => $('notesSection').classList.toggle('collapsed'));
+  const CHORDS_PAD_KEY = 'metro-buddy-chords-pad';
+  const chordsPad = $('chordsPad');
+  // One-time migration of old NOTES pad content
+  const oldNotes = localStorage.getItem('metro-buddy-notes');
+  if (oldNotes && !localStorage.getItem(CHORDS_PAD_KEY)) {
+    localStorage.setItem(CHORDS_PAD_KEY, oldNotes);
+    localStorage.removeItem('metro-buddy-notes');
+  }
+  chordsPad.value = localStorage.getItem(CHORDS_PAD_KEY) || '';
+  chordsPad.addEventListener('input', () => localStorage.setItem(CHORDS_PAD_KEY, chordsPad.value));
+  $('chordsHeader').addEventListener('click', () => $('chordsSection').classList.toggle('collapsed'));
   $('howtoHeader').addEventListener('click', () => $('howtoSection').classList.toggle('collapsed'));
 
   /* ============================================================
@@ -3450,7 +3456,7 @@
     'metro-buddy-ear-stats-v2',
     'metro-buddy-ear-select',
     'metro-buddy-custom-grooves',
-    'metro-buddy-notes',
+    'metro-buddy-chords-pad',
     'metro-buddy-bpm',
   ];
   function buildBackupJSON() {
