@@ -499,9 +499,12 @@
   .gig-song-title { font-size: 17px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink); }
   .gig-song-meta { font-size: 11px; color: var(--dim); letter-spacing: 0.14em; margin-top: 3px; margin-bottom: 28px; }
   .gig-section-name {
-    font-size: 68px; font-weight: 700; letter-spacing: 0.04em; line-height: 1;
+    font-size: 56px; font-weight: 700; letter-spacing: 0.02em; line-height: 1;
     color: var(--ink); transition: color 0.2s ease;
+    max-width: 100%; padding: 0 6px; word-break: break-word;
   }
+  .gig-section-name.long  { font-size: 46px; }
+  .gig-section-name.xlong { font-size: 38px; }
   .gig-section-name.flash { color: var(--accent); }
   .gig-timer-display {
     font-size: 80px; font-weight: 700; font-variant-numeric: tabular-nums;
@@ -621,7 +624,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.36</div>
+    <div class="meta">v3.37</div>
   </header>
 
   <section class="display">
@@ -3171,7 +3174,12 @@
     $('gigSongPos').textContent = 'SONG ' + (gig.songIdx + 1) + ' OF ' + gig.songs.length;
     $('gigSongTitle').textContent = song.title;
     $('gigSongMeta').textContent = song.key + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/');
-    $('gigSectionName').textContent = gigLabel(sec.type);
+    const secLabel = gigLabel(sec.type);
+    const nameEl = $('gigSectionName');
+    nameEl.textContent = secLabel;
+    nameEl.classList.remove('long', 'xlong');
+    if (secLabel.length >= 11) nameEl.classList.add('xlong');
+    else if (secLabel.length >= 8) nameEl.classList.add('long');
     $('gigSectionNote').textContent = sec.note || '';
     updateGigTimerOnly();
 
