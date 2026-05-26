@@ -653,7 +653,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.42</div>
+    <div class="meta">v3.43</div>
   </header>
 
   <section class="display">
@@ -1082,7 +1082,7 @@
             <div class="form-label">TYPE</div>
             <div class="form-label">BARS</div>
             <div class="form-label">SEC</div>
-            <div class="form-label">NOTE</div>
+            <div class="form-label">CHORDS</div>
             <div></div>
           </div>
           <div id="sectionRows"></div>
@@ -2635,11 +2635,14 @@
     if (!getActiveId() || !loadSetlists().find(l => String(l.id) === getActiveId())) {
       setActiveId(loadSetlists()[0].id);
     }
-    // Migrate song.notes → song.chords (one-time, idempotent)
+    // Migrate song.notes → song.chords and sec.note → sec.chords (one-time, idempotent)
     const lists = loadSetlists();
     let mutated = false;
     lists.forEach(l => (l.songs || []).forEach(s => {
       if (s.notes && !s.chords) { s.chords = s.notes; delete s.notes; mutated = true; }
+      (s.sections || []).forEach(sec => {
+        if (sec.note && !sec.chords) { sec.chords = sec.note; delete sec.note; mutated = true; }
+      });
     }));
     if (mutated) saveSetlists(lists);
   })();
@@ -2773,7 +2776,7 @@
       card.dataset.songId = song.id;
       const struct = song.sections.map(s => {
         const dur = s.open ? '∞' : (s.seconds ? s.seconds + 's' : (s.bars ? s.bars + 'b' : ''));
-        return s.type + (dur ? '(' + dur + ')' : '') + (s.note ? '[' + s.note + ']' : '');
+        return s.type + (dur ? '(' + dur + ')' : '');
       }).join(' → ');
       card.innerHTML =
         '<div class="drag-handle">⠿</div>' +
@@ -2855,20 +2858,20 @@
     const row = document.createElement('div'); row.className = 'section-row';
     const bars = sec && sec.bars ? sec.bars : '';
     const secs = sec ? (sec.seconds || (sec.bars ? barsToSec(sec.bars) : '')) : '';
-    const note = sec && sec.note ? sec.note : '';
-    const chords = sec && sec.chords ? sec.chords : '';
+    // Migrate any old per-section note into the chords field display
+    const chords = sec ? (sec.chords || sec.note || '') : '';
     const open = !!(sec && sec.open);
     row.innerHTML =
       '<select class="section-type-sel" style="font-size:10px;padding:5px 3px;">' + SEC_TYPES.map(t => '<option value="' + t + '"' + (sec && sec.type===t?' selected':'') + '>' + t + '</option>').join('') + '</select>' +
       '<input class="section-num bars-in" type="number" placeholder="—" min="1" max="999" value="' + bars + '" style="font-size:10px;padding:5px 3px;" />' +
       '<input class="section-num secs-in" type="number" placeholder="—" min="1" max="9999" value="' + secs + '" style="font-size:10px;padding:5px 3px;" />' +
-      '<input class="section-num note-in" type="text" placeholder="note…" maxlength="40" value="' + note.replace(/"/g,'&quot;') + '" style="font-size:10px;padding:5px 4px;" />' +
+      '<input class="section-num chords-in" type="text" placeholder="chords…" maxlength="60" value="' + chords.replace(/"/g,'&quot;') + '" style="font-size:10px;padding:5px 4px;color:var(--accent-soft);" />' +
       '<button class="section-remove">✕</button>';
 
     const sub = document.createElement('div'); sub.className = 'section-sub-row';
+    sub.style.gridTemplateColumns = '1fr';
     sub.innerHTML =
-      '<input class="chords-in" type="text" placeholder="chords… e.g. A C#m F#m E" maxlength="60" value="' + chords.replace(/"/g,'&quot;') + '" />' +
-      '<button type="button" class="open-toggle' + (open ? ' on' : '') + '" data-open="' + (open ? '1' : '0') + '">' + (open ? '★ OPEN' : '○ OPEN') + '</button>';
+      '<button type="button" class="open-toggle' + (open ? ' on' : '') + '" data-open="' + (open ? '1' : '0') + '">' + (open ? '★ OPEN — manual advance' : '○ OPEN — manual advance') + '</button>';
 
     wrap.appendChild(row);
     wrap.appendChild(sub);
@@ -2882,7 +2885,7 @@
       const on = b.dataset.open !== '1';
       b.dataset.open = on ? '1' : '0';
       b.classList.toggle('on', on);
-      b.textContent = on ? '★ OPEN' : '○ OPEN';
+      b.textContent = on ? '★ OPEN — manual advance' : '○ OPEN — manual advance';
     });
     return wrap;
   }
@@ -3268,7 +3271,7 @@
     nameEl.classList.remove('long', 'xlong');
     if (secLabel.length >= 11) nameEl.classList.add('xlong');
     else if (secLabel.length >= 8) nameEl.classList.add('long');
-    $('gigSectionNote').textContent = sec.note || '';
+    $('gigSectionNote').textContent = '';
     $('gigSectionChords').textContent = sec.chords || '';
     $('gigSectionTapArea').classList.toggle('open', !!sec.open);
     updateGigTimerOnly();
@@ -3415,10 +3418,9 @@
       const type = row.querySelector('select').value;
       const bars = +row.querySelector('.bars-in').value || 0;
       const secs = +row.querySelector('.secs-in').value || 30;
-      const note = row.querySelector('.note-in').value.trim();
-      const chords = (wrap.querySelector('.chords-in')?.value || '').trim();
+      const chords = (row.querySelector('.chords-in')?.value || '').trim();
       const open = wrap.querySelector('.open-toggle')?.dataset.open === '1';
-      sections.push({ type, bars, seconds: secs, ...(note && { note }), ...(chords && { chords }), ...(open && { open: true }) });
+      sections.push({ type, bars, seconds: secs, ...(chords && { chords }), ...(open && { open: true }) });
     });
     const songs = loadSongs();
     const rawKey = $('formKey').value.trim();
