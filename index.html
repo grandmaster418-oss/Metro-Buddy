@@ -511,7 +511,13 @@
   .gig-progress { width: 100%; max-width: 320px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin: 10px 0; }
   .gig-progress-bar { height: 100%; background: var(--green); border-radius: 2px; transition: width 1s linear; }
   .gig-progress-bar.urgent { background: var(--accent); }
-  .gig-next-label { font-size: 36px; font-weight: 700; letter-spacing: 0.06em; color: var(--dim); min-height: 44px; margin-top: 8px; }
+  .gig-next-label { font-size: 32px; font-weight: 700; letter-spacing: 0.06em; color: var(--dim); min-height: 40px; margin-top: 8px; }
+  .gig-queue-label {
+    font-size: 13px; letter-spacing: 0.08em; color: var(--dim);
+    margin-top: 6px; min-height: 16px; line-height: 1.5;
+    padding: 0 12px; max-width: 100%; word-break: break-word;
+  }
+  .gig-queue-label .qsong { color: var(--accent-soft); }
   .gig-beat-dot {
     width: 20px; height: 20px; border-radius: 50%; background: #1a1a1a;
     border: 2px solid var(--line); margin: 0 auto 16px;
@@ -615,7 +621,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.35</div>
+    <div class="meta">v3.36</div>
   </header>
 
   <section class="display">
@@ -1116,6 +1122,7 @@
       <div class="gig-timer-display" id="gigTimerDisplay">0:00</div>
       <div class="gig-progress"><div class="gig-progress-bar" id="gigProgressBar" style="width:100%"></div></div>
       <div class="gig-next-label" id="gigNextLabel"></div>
+      <div class="gig-queue-label" id="gigQueueLabel"></div>
       <div class="gig-dots" id="gigDots"></div>
     </div>
     <div class="gig-bottom">
@@ -3167,9 +3174,35 @@
     $('gigSectionName').textContent = gigLabel(sec.type);
     $('gigSectionNote').textContent = sec.note || '';
     updateGigTimerOnly();
-    if (nextSec) $('gigNextLabel').textContent = 'NEXT: ' + gigLabel(nextSec.type);
-    else if (!isLastSong) $('gigNextLabel').textContent = 'NEXT SONG: ' + gig.songs[gig.songIdx + 1].title;
-    else $('gigNextLabel').textContent = 'LAST SECTION';
+
+    // Build upcoming queue (next 6 items, spilling into following songs)
+    const queue = []; // each: { text, isSong }
+    for (let i = gig.sectionIdx + 1; i < song.sections.length && queue.length < 6; i++) {
+      queue.push({ text: gigLabel(song.sections[i].type), isSong: false });
+    }
+    let s = gig.songIdx + 1;
+    while (s < gig.songs.length && queue.length < 6) {
+      queue.push({ text: '▸ ' + gig.songs[s].title, isSong: true });
+      const ns = gig.songs[s];
+      for (let i = 0; i < ns.sections.length && queue.length < 6; i++) {
+        queue.push({ text: gigLabel(ns.sections[i].type), isSong: false });
+      }
+      s++;
+    }
+
+    if (queue.length === 0) {
+      $('gigNextLabel').textContent = 'LAST SECTION';
+      $('gigQueueLabel').innerHTML = '';
+    } else {
+      const first = queue[0];
+      $('gigNextLabel').textContent = (first.isSong ? 'NEXT SONG: ' + first.text.replace(/^▸ /, '') : 'NEXT: ' + first.text);
+      const rest = queue.slice(1);
+      $('gigQueueLabel').innerHTML = rest.length
+        ? rest.map(q => q.isSong
+            ? '<span class="qsong">' + q.text + '</span>'
+            : q.text).join(' → ')
+        : '';
+    }
     const dots = $('gigDots'); dots.innerHTML = '';
     song.sections.forEach((s, i) => {
       const d = document.createElement('div');
