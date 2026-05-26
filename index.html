@@ -653,7 +653,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.38</div>
+    <div class="meta">v3.39</div>
   </header>
 
   <section class="display">
@@ -1089,8 +1089,8 @@
           <button class="add-section-btn" id="addSectionRowBtn">+ ADD SECTION</button>
         </div>
         <div class="form-field" style="margin-top:10px;">
-          <label class="form-label">PRACTICE NOTES</label>
-          <textarea class="form-input" id="formNotes" placeholder="Chord tones, trouble spots, feel notes..." style="min-height:80px;resize:vertical;line-height:1.6;"></textarea>
+          <label class="form-label">CHORDS</label>
+          <textarea class="form-input" id="formChords" placeholder="Full song chord chart — e.g. V: A C#m F#m E    C: D A E F#m" style="min-height:80px;resize:vertical;line-height:1.6;color:var(--accent-soft);"></textarea>
         </div>
         <div class="form-actions">
           <button class="btn primary form-save" id="formSaveBtn">SAVE</button>
@@ -2774,7 +2774,7 @@
           '<div class="song-title">' + esc(song.title) + '</div>' +
           '<div class="song-meta">' + esc(song.key) + ' · ' + song.bpm + ' BPM · ' + song.timeSig.replace('-','/') + (song.duration ? ' · ' + song.duration + 'min' : '') + '</div>' +
           '<div class="song-structure">' + esc(struct) + '</div>' +
-          (song.notes ? '<div class="song-notes">' + esc(song.notes) + '</div>' : '') +
+          (song.chords ? '<div class="song-notes" style="color:var(--accent-soft);">' + esc(song.chords) + '</div>' : '') +
           '<div class="song-actions">' +
             '<button class="song-action gig">GIG</button>' +
             '<button class="song-action load">LOAD</button>' +
@@ -2887,7 +2887,7 @@
     $('formBpm').value = song ? song.bpm : state.bpm;
     $('formMeter').value = song ? song.timeSig : state.meter;
     $('formDuration').value = song ? (song.duration || '') : '';
-    $('formNotes').value = song ? (song.notes || '') : '';
+    $('formChords').value = song ? (song.chords || song.notes || '') : '';
     const rows = $('sectionRows'); rows.innerHTML = '';
     (song && song.sections.length ? song.sections : [null]).forEach(s => rows.appendChild(makeSectionRow(s)));
     $('songForm').classList.add('visible');
@@ -2928,7 +2928,7 @@
     const c = songs.map(s => [
       s.id, s.title, s.key, s.bpm, s.timeSig, s.duration || 0,
       (s.sections || []).map(sec => [sec.type, sec.seconds || 0]),
-      s.notes || ''
+      s.chords || s.notes || ''
     ]);
     return btoa(unescape(encodeURIComponent(JSON.stringify(c))));
   }
@@ -2940,7 +2940,7 @@
         id: s[0], title: s[1], key: s[2], bpm: s[3],
         timeSig: s[4], duration: s[5],
         sections: (s[6] || []).map(sec => ({ type: sec[0], seconds: sec[1] })),
-        notes: s[7] || ''
+        chords: s[7] || ''
       }));
     }
     return data; // legacy format
@@ -3416,7 +3416,7 @@
     const songs = loadSongs();
     const rawKey = $('formKey').value.trim();
     const key = rawKey ? rawKey[0].toUpperCase() + rawKey.slice(1) : '?';
-    const entry = { id: editingId || Date.now(), title, key, bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, duration: +$('formDuration').value || 0, sections, notes: $('formNotes').value.trim() };
+    const entry = { id: editingId || Date.now(), title, key, bpm: +$('formBpm').value || 120, timeSig: $('formMeter').value, duration: +$('formDuration').value || 0, sections, chords: $('formChords').value.trim() };
     const idx = songs.findIndex(s => s.id === editingId);
     if (idx >= 0) songs[idx] = entry; else songs.push(entry);
     saveSongs(songs); closeSongForm(); renderSongList();
