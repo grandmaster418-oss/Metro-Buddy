@@ -455,7 +455,24 @@
   .form-input:focus, .section-type-sel:focus { outline: none; border-color: var(--accent); }
   .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
   .section-header-row,
-  .section-row { display: grid; grid-template-columns: 68px 40px 46px 1fr 28px; gap: 4px; margin-bottom: 5px; }
+  .section-row { display: grid; grid-template-columns: 68px 40px 46px 1fr 28px; gap: 4px; margin-bottom: 4px; }
+  .section-sub-row {
+    display: grid; grid-template-columns: 1fr 64px; gap: 4px; margin-bottom: 8px;
+    padding-left: 0;
+  }
+  .section-sub-row input.chords-in {
+    width: 100%; padding: 5px 7px; background: #050505; border: 1px solid var(--line);
+    border-radius: 4px; color: var(--accent-soft); font-family: inherit;
+    font-size: 10px; letter-spacing: 0.06em; -webkit-appearance: none; appearance: none;
+  }
+  .section-sub-row input.chords-in:focus { outline: none; border-color: var(--accent); }
+  .section-sub-row .open-toggle {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    background: #050505; border: 1px solid var(--line); border-radius: 4px;
+    color: var(--dim); font-size: 9px; letter-spacing: 0.1em; cursor: pointer;
+    user-select: none;
+  }
+  .section-sub-row .open-toggle.on { border-color: var(--accent); color: var(--accent); }
   .section-num {
     padding: 6px 5px; background: #050505; border: 1px solid var(--line);
     border-radius: 4px; color: var(--ink); font-family: inherit; font-size: 11px;
@@ -505,6 +522,18 @@
   }
   .gig-section-name.long  { font-size: 46px; }
   .gig-section-name.xlong { font-size: 38px; }
+  .gig-section-tap-area {
+    text-align: center; padding: 12px 6px; border-radius: 14px;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+  }
+  .gig-section-tap-area.open {
+    background: rgba(255,91,31,0.05);
+    box-shadow: 0 0 0 1px rgba(255,91,31,0.25) inset;
+    cursor: pointer;
+  }
+  .gig-section-tap-area.open:active { background: rgba(255,91,31,0.15); }
+  .gig-timer-display.open-hold { color: var(--accent-soft); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
   .gig-section-name.flash { color: var(--accent); }
   .gig-timer-display {
     font-size: 80px; font-weight: 700; font-variant-numeric: tabular-nums;
@@ -624,7 +653,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.37</div>
+    <div class="meta">v3.38</div>
   </header>
 
   <section class="display">
@@ -872,7 +901,7 @@
         <ul class="howto-list">
           <li>Tabs at the top = multiple named setlists. <b>+ NEW</b> creates one, double-tap an active tab to rename, <b>DEL</b> deletes.</li>
           <li><b>+ ADD SONG</b>: title, key, BPM, meter. Add sections (V, C, Bridge, Vamp…) with bars+seconds. BARS auto-fills SEC from current BPM/meter.</li>
-          <li>Each section can have a short <b>NOTE</b> (e.g. "capo 2", "no bass") — shown in gig mode under the section name.</li>
+          <li>Each section can have a short <b>NOTE</b> (e.g. "capo 2"), a <b>CHORDS</b> progression line, and an <b>OPEN</b> toggle for variable-length sections (timer holds, you advance manually).</li>
           <li>Drag the orange <b>⠿</b> handle to reorder. <b>MOVE</b> sends a song to another setlist.</li>
           <li><b>LOAD</b> sets BPM+meter only. <b>GIG</b> starts full-screen mode from that song.</li>
           <li>Share: <b>⬇ EXPORT</b> file, <b>🔗 LINK</b> URL, <b>⬛ QR</b> code. Imports open a banner — pick which setlist to import INTO.</li>
@@ -883,7 +912,10 @@
         <div class="howto-title">GIG MODE</div>
         <ul class="howto-list">
           <li>Starts <b>paused</b>. The blue dot flashes beat 1 silently — tap <b>RESUME</b> on the downbeat to sync.</li>
-          <li>Big text shows section. Countdown auto-advances. Section <b>NOTE</b> appears below the name.</li>
+          <li>Big text shows section. Section <b>NOTE</b> appears below the name. <b>CHORDS</b> line shows the progression.</li>
+          <li><b>OPEN sections</b>: section name area gets an orange ring. Timer holds at <b>OPEN</b> when it hits 0. <b>Tap the section name</b> to advance, or hit <b>NEXT ▶</b>.</li>
+          <li>Above the timer: <b>X:XX LEFT IN SONG</b> — total time remaining for the whole song.</li>
+          <li>Bottom row: <b>↺ SECTION</b> restarts the current section. <b>↺ SONG</b> jumps back to the song's first section.</li>
           <li><b>−1 BEAT / +1 BEAT</b>: nudge if you drift. <b>PREV / NEXT</b>: jump sections. <b>NEXT SONG</b>: skip ahead.</li>
           <li>If you close/reload mid-gig, a <b>RESUME GIG?</b> banner restores where you were.</li>
         </ul>
@@ -1120,8 +1152,13 @@
       <div class="gig-song-meta" id="gigSongMeta">—</div>
       <div class="gig-sync-hint" id="gigSyncHint">TAP RESUME TO SYNC</div>
       <div class="gig-beat-dot" id="gigBeatDot"></div>
-      <div class="gig-section-name" id="gigSectionName">—</div>
-      <div id="gigSectionNote" style="font-size:14px;color:var(--dim);letter-spacing:0.1em;min-height:20px;margin-top:4px;"></div>
+      <div class="gig-section-tap-area" id="gigSectionTapArea">
+        <div class="gig-section-name" id="gigSectionName">—</div>
+        <div id="gigSectionNote" style="font-size:14px;color:var(--dim);letter-spacing:0.1em;min-height:20px;margin-top:4px;"></div>
+        <div id="gigSectionChords" style="font-size:18px;font-weight:700;color:var(--accent-soft);letter-spacing:0.16em;margin-top:6px;min-height:24px;"></div>
+        <div id="gigOpenHint" style="display:none;font-size:11px;letter-spacing:0.22em;color:var(--accent);margin-top:6px;animation:pulse 1s infinite;">▶ TAP TO ADVANCE</div>
+      </div>
+      <div id="gigSongRemaining" style="font-size:11px;letter-spacing:0.16em;color:var(--dim);margin-top:10px;">— LEFT IN SONG</div>
       <div class="gig-timer-display" id="gigTimerDisplay">0:00</div>
       <div class="gig-progress"><div class="gig-progress-bar" id="gigProgressBar" style="width:100%"></div></div>
       <div class="gig-next-label" id="gigNextLabel"></div>
@@ -1134,8 +1171,10 @@
         <button class="gig-btn" id="gigPauseBtn">PAUSE</button>
         <button class="gig-btn" id="gigNextSecBtn">NEXT ▶</button>
       </div>
-      <div class="gig-nudge-row">
+      <div class="gig-nudge-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
         <button class="gig-nudge" id="gigRewindBtn">⏮ −1 BEAT</button>
+        <button class="gig-nudge" id="gigRestartSecBtn">↺ SECTION</button>
+        <button class="gig-nudge" id="gigRestartSongBtn">↺ SONG</button>
         <button class="gig-nudge" id="gigFwdBtn">+1 BEAT ⏭</button>
       </div>
       <button class="gig-next-song" id="gigNextSongBtn">NEXT SONG →</button>
@@ -2726,7 +2765,7 @@
       card.className = 'song-card';
       card.dataset.songId = song.id;
       const struct = song.sections.map(s => {
-        const dur = s.seconds ? s.seconds + 's' : (s.bars ? s.bars + 'b' : '');
+        const dur = s.open ? '∞' : (s.seconds ? s.seconds + 's' : (s.bars ? s.bars + 'b' : ''));
         return s.type + (dur ? '(' + dur + ')' : '') + (s.note ? '[' + s.note + ']' : '');
       }).join(' → ');
       card.innerHTML =
@@ -2805,22 +2844,40 @@
   }
 
   function makeSectionRow(sec) {
+    const wrap = document.createElement('div'); wrap.className = 'section-row-wrap';
     const row = document.createElement('div'); row.className = 'section-row';
     const bars = sec && sec.bars ? sec.bars : '';
     const secs = sec ? (sec.seconds || (sec.bars ? barsToSec(sec.bars) : '')) : '';
     const note = sec && sec.note ? sec.note : '';
+    const chords = sec && sec.chords ? sec.chords : '';
+    const open = !!(sec && sec.open);
     row.innerHTML =
       '<select class="section-type-sel" style="font-size:10px;padding:5px 3px;">' + SEC_TYPES.map(t => '<option value="' + t + '"' + (sec && sec.type===t?' selected':'') + '>' + t + '</option>').join('') + '</select>' +
       '<input class="section-num bars-in" type="number" placeholder="—" min="1" max="999" value="' + bars + '" style="font-size:10px;padding:5px 3px;" />' +
       '<input class="section-num secs-in" type="number" placeholder="—" min="1" max="9999" value="' + secs + '" style="font-size:10px;padding:5px 3px;" />' +
       '<input class="section-num note-in" type="text" placeholder="note…" maxlength="40" value="' + note.replace(/"/g,'&quot;') + '" style="font-size:10px;padding:5px 4px;" />' +
       '<button class="section-remove">✕</button>';
-    row.querySelector('.section-remove').addEventListener('click', () => row.remove());
+
+    const sub = document.createElement('div'); sub.className = 'section-sub-row';
+    sub.innerHTML =
+      '<input class="chords-in" type="text" placeholder="chords… e.g. A C#m F#m E" maxlength="60" value="' + chords.replace(/"/g,'&quot;') + '" />' +
+      '<button type="button" class="open-toggle' + (open ? ' on' : '') + '" data-open="' + (open ? '1' : '0') + '">' + (open ? '★ OPEN' : '○ OPEN') + '</button>';
+
+    wrap.appendChild(row);
+    wrap.appendChild(sub);
+    row.querySelector('.section-remove').addEventListener('click', () => wrap.remove());
     row.querySelector('.bars-in').addEventListener('input', e => {
       const b = +e.target.value;
       if (b > 0) row.querySelector('.secs-in').value = barsToSec(b);
     });
-    return row;
+    sub.querySelector('.open-toggle').addEventListener('click', e => {
+      const b = e.currentTarget;
+      const on = b.dataset.open !== '1';
+      b.dataset.open = on ? '1' : '0';
+      b.classList.toggle('on', on);
+      b.textContent = on ? '★ OPEN' : '○ OPEN';
+    });
+    return wrap;
   }
 
   function openSongForm(song) {
@@ -3095,13 +3152,7 @@
     $('gigSyncHint').style.display = 'block';
     $('gigOverlay').style.display = 'flex';
     updateGigUI();
-    gig.tid = setInterval(() => {
-      if (gig.paused) return;
-      gig.secondsLeft--;
-      saveGigState();
-      if (gig.secondsLeft <= 0) gigNextSection(true);
-      else updateGigTimerOnly();
-    }, 1000);
+    gig.tid = setInterval(gigTick, 1000);
   }
 
   function resumeGig(gs) {
@@ -3121,13 +3172,29 @@
     $('gigOverlay').style.display = 'flex';
     updateGigUI();
     $('gigPauseBtn').textContent = 'RESUME';
-    gig.tid = setInterval(() => {
-      if (gig.paused) return;
-      gig.secondsLeft--;
-      saveGigState();
-      if (gig.secondsLeft <= 0) gigNextSection(true);
-      else updateGigTimerOnly();
-    }, 1000);
+    gig.tid = setInterval(gigTick, 1000);
+  }
+
+  function gigTick() {
+    if (gig.paused) return;
+    const sec = gig.songs[gig.songIdx].sections[gig.sectionIdx];
+    if (gig.secondsLeft <= 0 && sec && sec.open) {
+      // open section — hold at 0, wait for manual NEXT or tap
+      updateGigTimerOnly();
+      return;
+    }
+    gig.secondsLeft--;
+    saveGigState();
+    if (gig.secondsLeft <= 0) {
+      if (sec && sec.open) {
+        // first tick at 0: hold, show hint
+        updateGigTimerOnly();
+      } else {
+        gigNextSection(true);
+      }
+    } else {
+      updateGigTimerOnly();
+    }
   }
 
   function gigNextSection(auto) {
@@ -3159,11 +3226,25 @@
   }
 
   function updateGigTimerOnly() {
-    const urgent = gig.secondsLeft <= 10;
-    $('gigTimerDisplay').textContent = fmtTime(gig.secondsLeft);
+    const sec = gig.songs[gig.songIdx].sections[gig.sectionIdx];
+    const isOpenHold = sec && sec.open && gig.secondsLeft <= 0;
+    const urgent = !isOpenHold && gig.secondsLeft <= 10;
+    $('gigTimerDisplay').textContent = isOpenHold ? 'OPEN' : fmtTime(Math.max(0, gig.secondsLeft));
     $('gigTimerDisplay').classList.toggle('urgent', urgent);
+    $('gigTimerDisplay').classList.toggle('open-hold', isOpenHold);
     $('gigProgressBar').classList.toggle('urgent', urgent);
-    $('gigProgressBar').style.width = (gig.totalSec > 0 ? (gig.secondsLeft / gig.totalSec * 100) : 0) + '%';
+    $('gigProgressBar').style.width = (gig.totalSec > 0 ? Math.max(0, gig.secondsLeft) / gig.totalSec * 100 : 0) + '%';
+    $('gigOpenHint').style.display = isOpenHold ? 'block' : 'none';
+
+    // Total time remaining for whole song
+    const song = gig.songs[gig.songIdx];
+    let songRem = Math.max(0, gig.secondsLeft);
+    for (let i = gig.sectionIdx + 1; i < song.sections.length; i++) {
+      const s = song.sections[i];
+      if (s.open) { songRem = null; break; } // unknowable
+      songRem += secDur(s);
+    }
+    $('gigSongRemaining').textContent = (songRem === null ? '∞ (open section ahead)' : fmtTime(songRem)) + ' LEFT IN SONG';
   }
 
   function updateGigUI() {
@@ -3181,6 +3262,8 @@
     if (secLabel.length >= 11) nameEl.classList.add('xlong');
     else if (secLabel.length >= 8) nameEl.classList.add('long');
     $('gigSectionNote').textContent = sec.note || '';
+    $('gigSectionChords').textContent = sec.chords || '';
+    $('gigSectionTapArea').classList.toggle('open', !!sec.open);
     updateGigTimerOnly();
 
     // Build upcoming queue (next 6 items, spilling into following songs)
@@ -3254,6 +3337,19 @@
   $('gigNextSecBtn').addEventListener('click', () => gigNextSection(false));
   $('gigNextSongBtn').addEventListener('click', gigNextSong);
   $('gigEndBtn').addEventListener('click', endGig);
+  $('gigRestartSecBtn').addEventListener('click', () => {
+    const sec = gig.songs[gig.songIdx].sections[gig.sectionIdx];
+    gig.totalSec = gig.secondsLeft = secDur(sec);
+    updateGigUI(); flashGigSection();
+  });
+  $('gigRestartSongBtn').addEventListener('click', () => {
+    gig.sectionIdx = 0;
+    gigLoadSection();
+  });
+  $('gigSectionTapArea').addEventListener('click', () => {
+    const sec = gig.songs[gig.songIdx].sections[gig.sectionIdx];
+    if (sec && sec.open) gigNextSection(false);
+  });
 
   // Check for saved gig state on load
   (() => {
@@ -3307,12 +3403,15 @@
   $('formSaveBtn').addEventListener('click', () => {
     const title = $('formTitle').value.trim(); if (!title) { $('formTitle').focus(); return; }
     const sections = [];
-    $('sectionRows').querySelectorAll('.section-row').forEach(row => {
+    $('sectionRows').querySelectorAll('.section-row-wrap').forEach(wrap => {
+      const row = wrap.querySelector('.section-row');
       const type = row.querySelector('select').value;
       const bars = +row.querySelector('.bars-in').value || 0;
       const secs = +row.querySelector('.secs-in').value || 30;
       const note = row.querySelector('.note-in').value.trim();
-      sections.push({ type, bars, seconds: secs, ...(note && { note }) });
+      const chords = (wrap.querySelector('.chords-in')?.value || '').trim();
+      const open = wrap.querySelector('.open-toggle')?.dataset.open === '1';
+      sections.push({ type, bars, seconds: secs, ...(note && { note }), ...(chords && { chords }), ...(open && { open: true }) });
     });
     const songs = loadSongs();
     const rawKey = $('formKey').value.trim();
