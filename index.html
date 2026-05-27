@@ -455,8 +455,8 @@
   .form-input:focus, .section-type-sel:focus { outline: none; border-color: var(--accent); }
   .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
   .section-header-row,
-  .section-row { display: grid; grid-template-columns: 60px 48px 52px 1fr 26px; gap: 4px; margin-bottom: 4px; }
-  .section-row > * { min-width: 0; }
+  .section-row { display: grid; grid-template-columns: 52px 38px 42px minmax(0,1fr) 24px; gap: 4px; margin-bottom: 4px; }
+  .section-row > *, .section-header-row > * { min-width: 0; }
   .section-sub-row {
     display: grid; grid-template-columns: 1fr 64px; gap: 4px; margin-bottom: 8px;
     padding-left: 0;
@@ -655,7 +655,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.44</div>
+    <div class="meta">v3.45</div>
   </header>
 
   <section class="display">
@@ -2860,14 +2860,13 @@
     const row = document.createElement('div'); row.className = 'section-row';
     const bars = sec && sec.bars ? sec.bars : '';
     const secs = sec ? (sec.seconds || (sec.bars ? barsToSec(sec.bars) : '')) : '';
-    // Migrate any old per-section note into the chords field display
     const chords = sec ? (sec.chords || sec.note || '') : '';
     const open = !!(sec && sec.open);
     row.innerHTML =
-      '<select class="section-type-sel" style="font-size:10px;padding:5px 3px;">' + SEC_TYPES.map(t => '<option value="' + t + '"' + (sec && sec.type===t?' selected':'') + '>' + t + '</option>').join('') + '</select>' +
-      '<input class="section-num bars-in" type="number" placeholder="—" min="1" max="999" value="' + bars + '" style="font-size:10px;padding:5px 3px;" />' +
-      '<input class="section-num secs-in" type="number" placeholder="—" min="1" max="9999" value="' + secs + '" style="font-size:10px;padding:5px 3px;" />' +
-      '<input class="section-num chords-in" type="text" placeholder="chords…" maxlength="60" value="' + chords.replace(/"/g,'&quot;') + '" style="font-size:10px;padding:5px 4px;color:var(--accent-soft);" />' +
+      '<select class="section-type-sel" style="font-size:10px;padding:5px 2px;">' + SEC_TYPES.map(t => '<option value="' + t + '"' + (sec && sec.type===t?' selected':'') + '>' + t + '</option>').join('') + '</select>' +
+      '<input class="section-num bars-in" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="—" value="' + bars + '" style="font-size:10px;padding:5px 2px;" />' +
+      '<input class="section-num secs-in" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="—" value="' + secs + '" style="font-size:10px;padding:5px 2px;" />' +
+      '<input class="section-num chords-in" type="text" placeholder="chords…" maxlength="60" value="' + chords.replace(/"/g,'&quot;') + '" style="font-size:10px;padding:5px 4px;color:var(--accent-soft);text-align:left;" />' +
       '<button class="section-remove">✕</button>';
 
     const sub = document.createElement('div'); sub.className = 'section-sub-row';
