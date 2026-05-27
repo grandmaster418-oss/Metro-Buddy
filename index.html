@@ -655,7 +655,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.46</div>
+    <div class="meta">v3.47</div>
   </header>
 
   <section class="display">
@@ -3021,8 +3021,12 @@
     // Use qrserver.com API (clean, scannable image) with bundled library fallback
     const img = $('qrImg');
     img.style.display = 'block';
-    img.src = 'https://api.qrserver.com/v1/create-qr-code/?data=' + encodeURIComponent(url) + '&size=280x280&ecc=M';
-    $('qrHint').textContent = 'Scan with your phone camera.';
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?data=' + encodeURIComponent(url) + '&size=400x400&ecc=L&margin=20';
+    img.style.width = '260px'; img.style.height = '260px';
+    const sizeKb = (url.length / 1024).toFixed(1);
+    $('qrHint').textContent = url.length > 1800
+      ? 'Big setlist (' + sizeKb + ' KB). If scan fails, use LINK or EXPORT.'
+      : 'Scan with your phone camera.';
     img.onerror = () => {
       // API failed — fall back to bundled library
       img.style.display = 'none';
@@ -3030,7 +3034,7 @@
       if (typeof QRCode !== 'undefined') {
         new QRCode(container, { text: url, width: 280, height: 280,
           colorDark: '#000000', colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.M });
+          correctLevel: QRCode.CorrectLevel.L });
       } else {
         container.innerHTML += '<div style="width:280px;height:60px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7a766e;">Use SHARE or LINK button</div>';
       }
