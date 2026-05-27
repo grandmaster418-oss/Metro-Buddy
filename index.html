@@ -455,7 +455,8 @@
   .form-input:focus, .section-type-sel:focus { outline: none; border-color: var(--accent); }
   .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
   .section-header-row,
-  .section-row { display: grid; grid-template-columns: 68px 40px 46px 1fr 28px; gap: 4px; margin-bottom: 4px; }
+  .section-row { display: grid; grid-template-columns: 60px 48px 52px 1fr 26px; gap: 4px; margin-bottom: 4px; }
+  .section-row > * { min-width: 0; }
   .section-sub-row {
     display: grid; grid-template-columns: 1fr 64px; gap: 4px; margin-bottom: 8px;
     padding-left: 0;
@@ -476,7 +477,8 @@
   .section-num {
     padding: 6px 5px; background: #050505; border: 1px solid var(--line);
     border-radius: 4px; color: var(--ink); font-family: inherit; font-size: 11px;
-    width: 100%; text-align: center; -webkit-appearance: none; appearance: none;
+    width: 100%; min-width: 0; text-align: center; -webkit-appearance: none; appearance: none;
+    box-sizing: border-box;
   }
   .section-num:focus { outline: none; border-color: var(--accent); }
   .section-num::-webkit-outer-spin-button,
@@ -653,7 +655,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.43</div>
+    <div class="meta">v3.44</div>
   </header>
 
   <section class="display">
