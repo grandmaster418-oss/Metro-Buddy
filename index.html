@@ -655,7 +655,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.47</div>
+    <div class="meta">v3.48</div>
   </header>
 
   <section class="display">
@@ -3170,12 +3170,12 @@
   function startGig(songs, fromIdx) {
     if (!songs[fromIdx] || !songs[fromIdx].sections || !songs[fromIdx].sections.length) return;
     clearInterval(gig.tid);
-    gig.songs = songs; gig.songIdx = fromIdx; gig.sectionIdx = 0; gig.paused = true; gig.active = true;
+    gig.songs = songs; gig.songIdx = fromIdx; gig.sectionIdx = 0; gig.paused = false; gig.active = true;
     gig.totalSec = gig.secondsLeft = secDur(songs[fromIdx].sections[0]);
     loadSongIntoMetro(songs[fromIdx]);
-    startGigDot(songs[fromIdx].bpm);
-    $('gigPauseBtn').textContent = 'RESUME';
-    $('gigSyncHint').style.display = 'block';
+    stopGigDot();
+    $('gigPauseBtn').textContent = 'PAUSE';
+    $('gigSyncHint').style.display = 'none';
     $('gigOverlay').style.display = 'flex';
     updateGigUI();
     gig.tid = setInterval(gigTick, 1000);
