@@ -661,7 +661,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.50</div>
+    <div class="meta">v3.51</div>
   </header>
 
   <section class="display">
@@ -708,6 +708,11 @@
         <span class="v">TAP</span>
       </button>
     </div>
+
+    <button class="toggle-pill" id="hapticBtn" data-on="false" style="margin-top:10px;">
+      <span class="k">HAPTIC · BEAT 1</span>
+      <span class="v" id="hapticVal">OFF</span>
+    </button>
 
     <div class="beats" id="beats" style="--steps:4"></div>
 
@@ -1314,7 +1319,7 @@
   ];
 
   const state = {
-    bpm: 100, meter: '4-4', halfTime: false, clickSub: 1,
+    bpm: 100, meter: '4-4', halfTime: false, clickSub: 1, haptic: false,
     metroOn: true, playing: false,
     pattern: { kick: [], snare: [], hat: [], target: [] },
     activePreset: 'off',
@@ -1549,6 +1554,8 @@
     const m = meterDefs[state.meter];
     const isAccent = state.accent.on && state.meter === '4-4' && state.accent.positions.includes(stepIndex);
 
+    if (stepIndex === 0) scheduleHapticBeatOne(time);
+
     if (isAccent) {
       playAccent(time);
     } else if (state.metroOn) {
@@ -1601,6 +1608,29 @@
     document.querySelectorAll('.step.playhead').forEach(e => e.classList.remove('playhead'));
     document.querySelectorAll('.beat.active').forEach(e => e.classList.remove('active'));
   }
+
+  // ---- Haptic beat 1 (Android; iOS has no Web vibration) ----
+  const HAPTIC_MS = 55;
+  const hasVibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+  function scheduleHapticBeatOne(time) {
+    if (!state.haptic || !hasVibrate) return;
+    const at = (time - audioCtx.currentTime) * 1000;
+    setTimeout(() => { if (state.playing && state.haptic) navigator.vibrate(HAPTIC_MS); }, Math.max(0, at));
+  }
+  (function initHaptic() {
+    const btn = $('hapticBtn'), val = $('hapticVal');
+    if (!btn) return;
+    state.haptic = localStorage.getItem('metro-buddy-haptic') === '1';
+    function paint() { btn.dataset.on = state.haptic ? 'true' : 'false'; val.textContent = state.haptic ? 'ON' : 'OFF'; }
+    if (!hasVibrate) { btn.disabled = true; btn.style.opacity = '0.5'; val.textContent = 'N/A'; btn.title = 'This device/browser has no vibration support'; return; }
+    paint();
+    btn.addEventListener('click', () => {
+      state.haptic = !state.haptic;
+      localStorage.setItem('metro-buddy-haptic', state.haptic ? '1' : '0');
+      paint();
+      if (state.haptic) navigator.vibrate(HAPTIC_MS); // confirm buzz
+    });
+  })();
 
   const BPM_KEY = 'metro-buddy-bpm';
   function setBPM(v) {
@@ -3204,6 +3234,7 @@
         const dot = $('gigBeatDot');
         dot.classList.add('flash-one');
         setTimeout(() => dot.classList.remove('flash-one'), 120);
+        if (state.haptic && hasVibrate) navigator.vibrate(HAPTIC_MS);
       }
       gigDotBeat = (gigDotBeat + 1) % beatsPerBar;
     };
