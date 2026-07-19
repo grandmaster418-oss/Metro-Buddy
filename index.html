@@ -168,6 +168,12 @@
   }
   .section h2 .led.on { background: var(--green); box-shadow: 0 0 10px var(--green); }
   .section h2 .led.tuner-on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .bl-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; }
+  .bl-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; max-height:230px; overflow:auto; }
+  .bl-chip { display:flex; flex-direction:column; align-items:center; min-width:42px; padding:6px 4px; border:1px solid var(--line); border-radius:6px; font-size:15px; font-weight:700; color:var(--ink); }
+  .bl-chip small { font-size:8px; font-weight:400; color:var(--dim); margin-top:2px; letter-spacing:0.04em; }
+  .bl-chip.active { border-color:var(--accent); color:var(--accent); box-shadow:0 0 8px rgba(255,91,31,0.45); }
+  .bl-check { font-size:10px; letter-spacing:0.1em; color:var(--dim); display:flex; align-items:center; gap:4px; }
   .section .h2-right { display: flex; align-items: center; gap: 10px; }
   .section .chevron { font-size: 14px; color: var(--dim); transition: transform .2s ease; }
   .section.collapsed .chevron { transform: rotate(-90deg); }
@@ -655,7 +661,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.49</div>
+    <div class="meta">v3.50</div>
   </header>
 
   <section class="display">
@@ -1140,6 +1146,45 @@
         Tap a string to focus, or AUTO to detect any note.<br>
         Pluck steady — let the note ring.
       </div>
+    </div>
+  </section>
+
+  <!-- BASS LISTENER -->
+  <section class="section collapsed" id="bassListenSection">
+    <h2 id="bassListenHeader">
+      <span>BASS LISTENER</span>
+      <span class="h2-right">
+        <span class="led" id="blLed"></span>
+        <span class="chevron">▾</span>
+      </span>
+    </h2>
+    <div class="section-body">
+      <p style="font-size:10px;color:var(--dim);line-height:1.5;margin:0 0 8px;">Load a clip → the low end is isolated → the bass notes are named. Best on sustained root notes; on full mixes expect <b>octave errors</b> — fix with <b>OCT ↓</b> or by ear.</p>
+      <input type="file" id="blFile" accept="audio/*" class="form-input" style="width:100%;padding:8px;" />
+      <div class="bl-row">
+        <span style="font-size:10px;letter-spacing:0.14em;color:var(--dim);">BASS CUTOFF</span>
+        <input type="range" id="blCutoff" min="120" max="400" value="220" style="flex:1;min-width:120px;" />
+        <span id="blCutoffVal" style="font-size:11px;color:var(--dim);min-width:54px;text-align:right;">220 Hz</span>
+      </div>
+      <div class="bl-row">
+        <button class="btn primary" id="blAnalyze" disabled style="flex:1;">ANALYZE</button>
+      </div>
+      <div class="bl-row">
+        <button class="btn" id="blPlay" disabled>▶ PLAY</button>
+        <button class="btn" id="blStop" disabled>■ STOP</button>
+        <select class="form-input" id="blSpeed" style="width:auto;padding:6px 8px;height:auto;">
+          <option value="1">1×</option><option value="0.75">0.75×</option><option value="0.5">0.5×</option>
+        </select>
+        <label class="bl-check"><input type="checkbox" id="blLoop" /> LOOP</label>
+      </div>
+      <div class="bl-row">
+        <label class="bl-check"><input type="checkbox" id="blOctDown" /> OCT ↓</label>
+        <label class="bl-check"><input type="checkbox" id="blKeySnap" /> SNAP TO KEY</label>
+        <select class="form-input" id="blKey" style="width:auto;padding:6px 8px;height:auto;"></select>
+      </div>
+      <div id="blStatus" style="font-size:11px;color:var(--dim);min-height:16px;margin-top:4px;">Load an audio clip to begin.</div>
+      <div id="blProgress" style="display:none;font-size:10px;color:var(--accent);margin-top:2px;"></div>
+      <div class="bl-chips" id="blResult"></div>
     </div>
   </section>
 
@@ -3545,6 +3590,203 @@
     try { restoreBackupJSON(raw); flashBackupMsg('✓ Restored — reloading…'); setTimeout(() => location.reload(), 700); }
     catch (err) { flashBackupMsg('✗ ' + err.message, 'var(--accent)'); }
   });
+
+  /* ===================== BASS LISTENER ===================== */
+  (function initBassListener() {
+    const sec = $('bassListenSection');
+    if (!sec) return;
+    $('bassListenHeader').addEventListener('click', () => sec.classList.toggle('collapsed'));
+
+    const fileIn = $('blFile'), analyzeBtn = $('blAnalyze'), statusEl = $('blStatus'),
+          cutoffSlider = $('blCutoff'), cutoffVal = $('blCutoffVal'), progressEl = $('blProgress'),
+          resultEl = $('blResult'), playBtn = $('blPlay'), stopBtn = $('blStop'),
+          speedSel = $('blSpeed'), loopChk = $('blLoop'), octDownChk = $('blOctDown'),
+          keySnapChk = $('blKeySnap'), keySel = $('blKey'), led = $('blLed');
+
+    let blCtx = null;      // realtime context for playback
+    let decoded = null;    // decoded AudioBuffer
+    let notesRaw = [];     // detected note events (before OCT/key options)
+    let notes = [];        // displayed events
+    let src = null, playStart = 0, rafId = 0;
+
+    const DET_MIN = 30, DET_MAX = 350;   // bass detection range in Hz
+
+    function ctx() { if (!blCtx) blCtx = new (window.AudioContext || window.webkitAudioContext)(); return blCtx; }
+    function setStatus(t) { statusEl.textContent = t; }
+    function midiName(m) { return noteNames[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1); }
+
+    // populate key dropdown (major keys)
+    noteNames.forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = k + ' maj'; keySel.appendChild(o); });
+
+    cutoffSlider.addEventListener('input', () => cutoffVal.textContent = cutoffSlider.value + ' Hz');
+
+    fileIn.addEventListener('change', async () => {
+      const f = fileIn.files[0];
+      if (!f) return;
+      setStatus('Loading ' + f.name + '…');
+      stopPlayback();
+      try {
+        const arr = await f.arrayBuffer();
+        decoded = await ctx().decodeAudioData(arr.slice(0));
+        setStatus('Loaded: ' + f.name + '  ·  ' + decoded.duration.toFixed(1) + 's. Tap ANALYZE.');
+        analyzeBtn.disabled = false; playBtn.disabled = false; stopBtn.disabled = false;
+        led.classList.add('on');
+        notesRaw = []; notes = []; renderNotes();
+      } catch (e) {
+        decoded = null; analyzeBtn.disabled = true;
+        setStatus('❌ Could not decode that file: ' + (e && e.message ? e.message : e));
+      }
+    });
+
+    analyzeBtn.addEventListener('click', async () => {
+      if (!decoded) return;
+      analyzeBtn.disabled = true;
+      progressEl.style.display = ''; progressEl.textContent = 'Analyzing… 0%';
+      setStatus('Isolating the low end and detecting notes…');
+      await new Promise(r => setTimeout(r, 30));
+      try {
+        notesRaw = await analyze(decoded, +cutoffSlider.value);
+        applyOptions();
+        setStatus(notes.length
+          ? 'Found ' + notes.length + ' notes. Play to check by ear — octave errors are common; use OCT ↓ or fix by ear.'
+          : 'No clear bass detected. Try raising BASS CUTOFF, or the bass may be too buried in this clip.');
+      } catch (e) {
+        setStatus('❌ Analysis failed: ' + (e && e.message ? e.message : e));
+      }
+      progressEl.style.display = 'none';
+      analyzeBtn.disabled = false;
+    });
+
+    // ---- analysis: offline low-pass + downsample, then autocorrelation framing ----
+    async function analyze(audioBuf, cutoff) {
+      const TARGET = 8000;
+      const len = Math.ceil(audioBuf.duration * TARGET);
+      const off = new OfflineAudioContext(1, len, TARGET);
+      const s = off.createBufferSource(); s.buffer = audioBuf;
+      const hp = off.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 28;
+      const lp1 = off.createBiquadFilter(); lp1.type = 'lowpass'; lp1.frequency.value = cutoff; lp1.Q.value = 0.707;
+      const lp2 = off.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = cutoff; lp2.Q.value = 0.707;
+      s.connect(hp); hp.connect(lp1); lp1.connect(lp2); lp2.connect(off.destination);
+      s.start();
+      const rendered = await off.startRendering();
+      const data = rendered.getChannelData(0);
+
+      // normalize so the ACF amplitude gate behaves
+      let peak = 0;
+      for (let i = 0; i < data.length; i++) { const a = Math.abs(data[i]); if (a > peak) peak = a; }
+      if (peak > 0) { const g = 0.9 / peak; for (let i = 0; i < data.length; i++) data[i] *= g; }
+
+      const WIN = 2048, HOP = 512, frameDur = HOP / TARGET;
+      const midis = [];
+      for (let i = 0; i + WIN <= data.length; i += HOP) {
+        const frame = data.subarray(i, i + WIN);
+        const f = autoCorrelate(frame, TARGET);
+        midis.push((f > 0 && f >= DET_MIN && f <= DET_MAX) ? Math.round(69 + 12 * Math.log2(f / 440)) : -1);
+        if ((midis.length % 24) === 0) {
+          progressEl.textContent = 'Analyzing… ' + Math.round(100 * i / data.length) + '%';
+          await new Promise(r => setTimeout(r));
+        }
+      }
+
+      // mode-smooth over a 5-frame window to kill jitter
+      const sm = midis.map((_, k) => {
+        const w = midis.slice(Math.max(0, k - 2), k + 3).filter(x => x >= 0);
+        if (!w.length) return -1;
+        const cnt = {}; let best = -1, bc = 0;
+        w.forEach(x => { cnt[x] = (cnt[x] || 0) + 1; if (cnt[x] > bc) { bc = cnt[x]; best = x; } });
+        return best;
+      });
+
+      // merge runs of the same note, keeping only stable ones (>= 3 frames ≈ 190ms)
+      const MIN_FRAMES = 3, out = [];
+      let i = 0;
+      while (i < sm.length) {
+        const m = sm[i]; let j = i;
+        while (j < sm.length && sm[j] === m) j++;
+        if (m >= 0 && (j - i) >= MIN_FRAMES) out.push({ midi: m, start: i * frameDur, end: j * frameDur });
+        i = j;
+      }
+      return out;
+    }
+
+    function snapToKey(list, rootName) {
+      const rootPc = noteNames.indexOf(rootName);
+      if (rootPc < 0) return;
+      const scale = [0, 2, 4, 5, 7, 9, 11].map(x => (x + rootPc) % 12);
+      list.forEach(n => {
+        const pc = ((n.midi % 12) + 12) % 12;
+        if (scale.includes(pc)) return;
+        for (let d = 1; d <= 6; d++) {
+          if (scale.includes((pc + d) % 12)) { n.midi += d; break; }
+          if (scale.includes(((pc - d) % 12 + 12) % 12)) { n.midi -= d; break; }
+        }
+      });
+    }
+
+    function applyOptions() {
+      notes = notesRaw.map(n => ({ midi: n.midi, start: n.start, end: n.end }));
+      if (octDownChk.checked) notes.forEach(n => n.midi -= 12);
+      if (keySnapChk.checked) snapToKey(notes, keySel.value);
+      renderNotes();
+    }
+    octDownChk.addEventListener('change', applyOptions);
+    keySnapChk.addEventListener('change', applyOptions);
+    keySel.addEventListener('change', () => { if (keySnapChk.checked) applyOptions(); });
+
+    function renderNotes() {
+      resultEl.innerHTML = '';
+      if (!notes.length) {
+        resultEl.innerHTML = '<div style="color:var(--dim);font-size:11px;">No notes yet — load a clip and tap ANALYZE.</div>';
+        return;
+      }
+      notes.forEach((n, idx) => {
+        const chip = document.createElement('span');
+        chip.className = 'bl-chip'; chip.dataset.idx = idx;
+        chip.innerHTML = '<b>' + midiName(n.midi) + '</b><small>' + n.start.toFixed(1) + 's</small>';
+        resultEl.appendChild(chip);
+      });
+    }
+
+    // ---- playback with a moving cursor over the note chips ----
+    playBtn.addEventListener('click', () => {
+      if (!decoded) return;
+      stopPlayback();
+      const c = ctx();
+      if (c.state === 'suspended') c.resume();
+      src = c.createBufferSource();
+      src.buffer = decoded;
+      src.playbackRate.value = +speedSel.value;
+      src.loop = loopChk.checked;
+      src.connect(c.destination);
+      playStart = c.currentTime;
+      src.onended = () => { if (!src || !src.loop) stopPlayback(); };
+      src.start();
+      tickCursor();
+    });
+    stopBtn.addEventListener('click', stopPlayback);
+    speedSel.addEventListener('change', () => { if (src) { playBtn.click(); } });
+
+    function tickCursor() {
+      if (!src) return;
+      const c = ctx();
+      let elapsed = (c.currentTime - playStart) * (+speedSel.value);
+      if (loopChk.checked && decoded.duration) elapsed = elapsed % decoded.duration;
+      let activeIdx = -1;
+      for (let i = 0; i < notes.length; i++) { if (elapsed >= notes[i].start && elapsed < notes[i].end) { activeIdx = i; break; } }
+      [...resultEl.children].forEach(ch => {
+        const on = +ch.dataset.idx === activeIdx;
+        ch.classList.toggle('active', on);
+        if (on) ch.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+      rafId = requestAnimationFrame(tickCursor);
+    }
+
+    function stopPlayback() {
+      if (src) { try { src.onended = null; src.stop(); } catch (e) {} src = null; }
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      [...resultEl.children].forEach(ch => ch.classList && ch.classList.remove('active'));
+    }
+  })();
 
 })();
 </script>
