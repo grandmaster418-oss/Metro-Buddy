@@ -661,7 +661,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.51</div>
+    <div class="meta">v3.52</div>
   </header>
 
   <section class="display">
@@ -1053,8 +1053,10 @@
         <button class="share-btn" id="importFileBtn">⬆ IMPORT</button>
         <button class="share-btn" id="copyLinkBtn">🔗 LINK</button>
         <button class="share-btn" id="qrBtn">⬛ QR / SHARE</button>
+        <button class="share-btn" id="alsImportBtn">🎛 ABLETON</button>
       </div>
       <input type="file" id="importFileInput" accept=".json" style="display:none;">
+      <input type="file" id="alsFileInput" accept=".als" style="display:none;">
       <!-- Sort row -->
       <div class="sort-row">
         <button class="sort-btn" data-sort="bpm-asc">BPM ↑</button>
@@ -3074,6 +3076,61 @@
     };
     reader.readAsText(file);
   });
+
+  // ---- Ableton .als setlist import (gzipped XML → songs/sections/tempo) ----
+  $('alsImportBtn').addEventListener('click', () => $('alsFileInput').click());
+  $('alsFileInput').addEventListener('change', async e => {
+    const file = e.target.files[0]; if (!file) return;
+    $('alsFileInput').value = '';
+    try {
+      const xml = await readAlsText(file);
+      const songs = parseAbletonSongs(xml);
+      if (!songs.length) { alert('No named songs found in that .als. It should be a Session with named scenes (song title, then sections).'); return; }
+      openImportBanner(songs, file.name.replace(/\.als$/i, ''));
+    } catch (err) {
+      alert('Could not read that .als: ' + (err && err.message ? err.message : err));
+    }
+  });
+
+  async function readAlsText(file) {
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) {   // gzip magic → decompress
+      if (typeof DecompressionStream !== 'function') throw new Error('this browser can’t unzip .als — open Metro Buddy in a recent Chrome');
+      const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+      const out = await new Response(stream).arrayBuffer();
+      return new TextDecoder('utf-8').decode(out);
+    }
+    return new TextDecoder('utf-8').decode(buf);
+  }
+
+  function xmlUnescape(s) {
+    return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#39;/g, "'");
+  }
+
+  // Convention: each song = a title scene followed by its section scenes; a
+  // blank (unnamed) scene separates songs; a trailing CLICK scene is skipped.
+  function parseAbletonSongs(xml) {
+    const blocks = xml.match(/<Scene Id=[\s\S]*?<\/Scene>/g) || [];
+    const val = (blk, tag) => { const m = blk.match(new RegExp('<' + tag + ' Value="([^"]*)"')); return m ? xmlUnescape(m[1]) : ''; };
+    const songs = []; const base = Date.now(); let cur = null;
+    blocks.forEach(b => {
+      const name = val(b, 'Name').trim();
+      const tempo = parseFloat(val(b, 'Tempo'));
+      const tempoOn = val(b, 'IsTempoEnabled') === 'true';
+      if (!name) { cur = null; return; }                          // blank scene = song boundary
+      if (!cur) {                                                 // first named scene = song title
+        cur = { id: base + songs.length, title: name, key: '',
+                bpm: (tempoOn && tempo) ? Math.round(tempo) : 120,
+                timeSig: '4-4', duration: 0, sections: [], chords: '' };
+        songs.push(cur);
+      } else if (name.toUpperCase() !== 'CLICK') {                // section scene
+        cur.sections.push({ type: name, bars: 0, seconds: 0, open: true });
+      }
+    });
+    return songs.filter(s => s.sections.length > 0);             // drop utility/empty tracks
+  }
 
   // COPY LINK
   $('copyLinkBtn').addEventListener('click', () => {
