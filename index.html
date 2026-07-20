@@ -661,7 +661,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.52</div>
+    <div class="meta">v3.53</div>
   </header>
 
   <section class="display">
@@ -1159,18 +1159,24 @@
   <!-- BASS LISTENER -->
   <section class="section collapsed" id="bassListenSection">
     <h2 id="bassListenHeader">
-      <span>BASS LISTENER</span>
+      <span>NOTE LISTENER</span>
       <span class="h2-right">
         <span class="led" id="blLed"></span>
         <span class="chevron">▾</span>
       </span>
     </h2>
     <div class="section-body">
-      <p style="font-size:10px;color:var(--dim);line-height:1.5;margin:0 0 8px;">Load a clip → the low end is isolated → the bass notes are named. Best on sustained root notes; on full mixes expect <b>octave errors</b> — fix with <b>OCT ↓</b> or by ear.</p>
+      <p id="blIntro" style="font-size:10px;color:var(--dim);line-height:1.5;margin:0 0 8px;">Load a clip → the low end is isolated → the <b>bass</b> notes are named. Best on sustained root notes; expect <b>octave errors</b> on full mixes — fix with <b>OCT ↓</b> or by ear.</p>
+      <div class="bl-row" style="gap:0;">
+        <div class="seg" id="blModeSeg" style="flex:1;">
+          <button data-mode="bass" class="active">BASS</button>
+          <button data-mode="melody">MELODY</button>
+        </div>
+      </div>
       <input type="file" id="blFile" accept="audio/*" class="form-input" style="width:100%;padding:8px;" />
       <div class="bl-row">
-        <span style="font-size:10px;letter-spacing:0.14em;color:var(--dim);">BASS CUTOFF</span>
-        <input type="range" id="blCutoff" min="120" max="400" value="220" style="flex:1;min-width:120px;" />
+        <span id="blCutoffLbl" style="font-size:10px;letter-spacing:0.14em;color:var(--dim);">BASS CUTOFF</span>
+        <input type="range" id="blCutoff" min="80" max="400" value="220" style="flex:1;min-width:120px;" />
         <span id="blCutoffVal" style="font-size:11px;color:var(--dim);min-width:54px;text-align:right;">220 Hz</span>
       </div>
       <div class="bl-row">
@@ -1186,6 +1192,7 @@
       </div>
       <div class="bl-row">
         <label class="bl-check"><input type="checkbox" id="blOctDown" /> OCT ↓</label>
+        <label class="bl-check"><input type="checkbox" id="blOctUp" /> OCT ↑</label>
         <label class="bl-check"><input type="checkbox" id="blKeySnap" /> SNAP TO KEY</label>
         <select class="form-input" id="blKey" style="width:auto;padding:6px 8px;height:auto;"></select>
       </div>
@@ -3688,7 +3695,7 @@
     const fileIn = $('blFile'), analyzeBtn = $('blAnalyze'), statusEl = $('blStatus'),
           cutoffSlider = $('blCutoff'), cutoffVal = $('blCutoffVal'), progressEl = $('blProgress'),
           resultEl = $('blResult'), playBtn = $('blPlay'), stopBtn = $('blStop'),
-          speedSel = $('blSpeed'), loopChk = $('blLoop'), octDownChk = $('blOctDown'),
+          speedSel = $('blSpeed'), loopChk = $('blLoop'), octDownChk = $('blOctDown'), octUpChk = $('blOctUp'),
           keySnapChk = $('blKeySnap'), keySel = $('blKey'), led = $('blLed');
 
     let blCtx = null;      // realtime context for playback
@@ -3697,7 +3704,8 @@
     let notes = [];        // displayed events
     let src = null, playStart = 0, rafId = 0;
 
-    const DET_MIN = 30, DET_MAX = 350;   // bass detection range in Hz
+    const modeSeg = $('blModeSeg'), cutoffLbl = $('blCutoffLbl'), intro = $('blIntro');
+    let blMode = localStorage.getItem('metro-buddy-bl-mode') === 'melody' ? 'melody' : 'bass';
 
     function ctx() { if (!blCtx) blCtx = new (window.AudioContext || window.webkitAudioContext)(); return blCtx; }
     function setStatus(t) { statusEl.textContent = t; }
@@ -3707,6 +3715,24 @@
     noteNames.forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = k + ' maj'; keySel.appendChild(o); });
 
     cutoffSlider.addEventListener('input', () => cutoffVal.textContent = cutoffSlider.value + ' Hz');
+
+    function applyModeUI() {
+      [...modeSeg.children].forEach(b => b.classList.toggle('active', b.dataset.mode === blMode));
+      const melody = blMode === 'melody';
+      cutoffLbl.textContent = melody ? 'LOW CUT' : 'BASS CUTOFF';
+      intro.innerHTML = melody
+        ? 'Load a clip → the mid/vocal range is isolated → the <b>melody</b> notes are named. Best when the lead/vocal is exposed; dense mixes & harmonies confuse it — check at <b>0.5×</b>.'
+        : 'Load a clip → the low end is isolated → the <b>bass</b> notes are named. Best on sustained root notes; expect <b>octave errors</b> on full mixes — fix with <b>OCT ↓</b> or by ear.';
+      cutoffVal.textContent = cutoffSlider.value + ' Hz';
+    }
+    modeSeg.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      blMode = b.dataset.mode;
+      localStorage.setItem('metro-buddy-bl-mode', blMode);
+      cutoffSlider.value = blMode === 'melody' ? 150 : 220;   // sensible default per mode
+      applyModeUI();
+    });
+    applyModeUI();
 
     fileIn.addEventListener('change', async () => {
       const f = fileIn.files[0];
@@ -3730,14 +3756,16 @@
       if (!decoded) return;
       analyzeBtn.disabled = true;
       progressEl.style.display = ''; progressEl.textContent = 'Analyzing… 0%';
-      setStatus('Isolating the low end and detecting notes…');
+      setStatus(blMode === 'melody' ? 'Isolating the mid/vocal range and detecting the melody…' : 'Isolating the low end and detecting notes…');
       await new Promise(r => setTimeout(r, 30));
       try {
         notesRaw = await analyze(decoded, +cutoffSlider.value);
         applyOptions();
-        setStatus(notes.length
-          ? 'Found ' + notes.length + ' notes. Play to check by ear — octave errors are common; use OCT ↓ or fix by ear.'
-          : 'No clear bass detected. Try raising BASS CUTOFF, or the bass may be too buried in this clip.');
+        const foundMsg = 'Found ' + notes.length + ' notes. Play to check by ear at 0.5×' + (blMode === 'melody' ? '. Harmonies/instruments can cause wrong notes — trust your ear.' : ' — octave errors are common; use OCT ↓ or fix by ear.');
+        const noneMsg = blMode === 'melody'
+          ? 'No clear melody detected. Try a more exposed/vocal part, or adjust LOW CUT to trim bass bleed.'
+          : 'No clear bass detected. Try raising BASS CUTOFF, or the bass may be too buried in this clip.';
+        setStatus(notes.length ? foundMsg : noneMsg);
       } catch (e) {
         setStatus('❌ Analysis failed: ' + (e && e.message ? e.message : e));
       }
@@ -3748,12 +3776,15 @@
     // ---- analysis: offline low-pass + downsample, then autocorrelation framing ----
     async function analyze(audioBuf, cutoff) {
       const TARGET = 8000;
+      const melody = blMode === 'melody';
+      const DET_MIN = melody ? 120 : 30;      // detection range in Hz
+      const DET_MAX = melody ? 1200 : 350;
       const len = Math.ceil(audioBuf.duration * TARGET);
       const off = new OfflineAudioContext(1, len, TARGET);
       const s = off.createBufferSource(); s.buffer = audioBuf;
-      const hp = off.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 28;
-      const lp1 = off.createBiquadFilter(); lp1.type = 'lowpass'; lp1.frequency.value = cutoff; lp1.Q.value = 0.707;
-      const lp2 = off.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = cutoff; lp2.Q.value = 0.707;
+      const hp = off.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = melody ? cutoff : 28;
+      const lp1 = off.createBiquadFilter(); lp1.type = 'lowpass'; lp1.frequency.value = melody ? 1200 : cutoff; lp1.Q.value = 0.707;
+      const lp2 = off.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = melody ? 1400 : cutoff; lp2.Q.value = 0.707;
       s.connect(hp); hp.connect(lp1); lp1.connect(lp2); lp2.connect(off.destination);
       s.start();
       const rendered = await off.startRendering();
@@ -3785,7 +3816,7 @@
         return best;
       });
 
-      // merge runs of the same note, keeping only stable ones (>= 3 frames ≈ 190ms)
+      // merge runs of the same note; require ~190ms stability to drop transition blips
       const MIN_FRAMES = 3, out = [];
       let i = 0;
       while (i < sm.length) {
@@ -3814,10 +3845,12 @@
     function applyOptions() {
       notes = notesRaw.map(n => ({ midi: n.midi, start: n.start, end: n.end }));
       if (octDownChk.checked) notes.forEach(n => n.midi -= 12);
+      if (octUpChk.checked) notes.forEach(n => n.midi += 12);
       if (keySnapChk.checked) snapToKey(notes, keySel.value);
       renderNotes();
     }
     octDownChk.addEventListener('change', applyOptions);
+    octUpChk.addEventListener('change', applyOptions);
     keySnapChk.addEventListener('change', applyOptions);
     keySel.addEventListener('change', () => { if (keySnapChk.checked) applyOptions(); });
 
