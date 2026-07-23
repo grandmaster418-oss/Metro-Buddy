@@ -661,7 +661,7 @@
 
   <header>
     <div class="logo">METRO BUDDY</div>
-    <div class="meta">v3.53</div>
+    <div class="meta">v3.54</div>
   </header>
 
   <section class="display">
@@ -1174,6 +1174,13 @@
         </div>
       </div>
       <input type="file" id="blFile" accept="audio/*" class="form-input" style="width:100%;padding:8px;" />
+      <div class="bl-row" style="justify-content:center;">
+        <span style="font-size:9px;letter-spacing:0.2em;color:var(--dim);">— OR RECORD FROM MIC —</span>
+      </div>
+      <div class="bl-row">
+        <button class="btn" id="blRecBtn" style="flex:1;">● RECORD</button>
+        <span id="blRecTime" style="font-size:12px;color:var(--dim);min-width:44px;text-align:right;font-variant-numeric:tabular-nums;">0:00</span>
+      </div>
       <div class="bl-row">
         <span id="blCutoffLbl" style="font-size:10px;letter-spacing:0.14em;color:var(--dim);">BASS CUTOFF</span>
         <input type="range" id="blCutoff" min="80" max="400" value="220" style="flex:1;min-width:120px;" />
@@ -3734,23 +3741,73 @@
     });
     applyModeUI();
 
+    // shared: a decoded AudioBuffer is ready (from file OR mic) → enable the flow
+    function readyBuffer(buf, label) {
+      decoded = buf;
+      analyzeBtn.disabled = false; playBtn.disabled = false; stopBtn.disabled = false;
+      led.classList.add('on');
+      notesRaw = []; notes = []; renderNotes();
+      setStatus(label + '  ·  ' + decoded.duration.toFixed(1) + 's. Tap ANALYZE.');
+    }
+
     fileIn.addEventListener('change', async () => {
       const f = fileIn.files[0];
       if (!f) return;
       setStatus('Loading ' + f.name + '…');
       stopPlayback();
       try {
-        const arr = await f.arrayBuffer();
-        decoded = await ctx().decodeAudioData(arr.slice(0));
-        setStatus('Loaded: ' + f.name + '  ·  ' + decoded.duration.toFixed(1) + 's. Tap ANALYZE.');
-        analyzeBtn.disabled = false; playBtn.disabled = false; stopBtn.disabled = false;
-        led.classList.add('on');
-        notesRaw = []; notes = []; renderNotes();
+        const buf = await ctx().decodeAudioData((await f.arrayBuffer()).slice(0));
+        readyBuffer(buf, 'Loaded: ' + f.name);
       } catch (e) {
         decoded = null; analyzeBtn.disabled = true;
         setStatus('❌ Could not decode that file: ' + (e && e.message ? e.message : e));
       }
     });
+
+    // ---- record a clip from the mic ----
+    const recBtn = $('blRecBtn'), recTime = $('blRecTime');
+    let mediaRec = null, recChunks = [], recStream = null, recTid = null, recStart = 0, recording = false;
+    const REC_MAX = 60; // seconds cap
+    const fmtTime = s => { const m = Math.floor(s / 60), ss = s % 60; return m + ':' + (ss < 10 ? '0' : '') + ss; };
+    function tickRec() {
+      const el = Math.floor((performance.now() - recStart) / 1000);
+      recTime.textContent = fmtTime(el);
+      if (el >= REC_MAX) stopRec();
+    }
+    function resetRecBtn() { recBtn.textContent = '● RECORD'; recBtn.classList.remove('primary'); recBtn.style.color = ''; }
+    async function startRec() {
+      try {
+        recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      } catch (e) {
+        setStatus('❌ Mic blocked: ' + (e && e.message ? e.message : e) + '  (recording needs the https site, not the http LAN address).');
+        return;
+      }
+      let rec;
+      try { rec = new MediaRecorder(recStream); }
+      catch (e) { setStatus('❌ Recording not supported in this browser.'); recStream.getTracks().forEach(t => t.stop()); recStream = null; return; }
+      mediaRec = rec; recChunks = [];
+      rec.ondataavailable = ev => { if (ev.data && ev.data.size) recChunks.push(ev.data); };
+      rec.onstop = async () => {
+        if (recStream) { recStream.getTracks().forEach(t => t.stop()); recStream = null; }
+        if (recTid) { clearInterval(recTid); recTid = null; }
+        recording = false; resetRecBtn();
+        try {
+          const blob = new Blob(recChunks, { type: rec.mimeType || 'audio/webm' });
+          const buf = await ctx().decodeAudioData(await blob.arrayBuffer());
+          readyBuffer(buf, 'Recorded');
+        } catch (e) {
+          setStatus('❌ Could not process the recording: ' + (e && e.message ? e.message : e));
+        }
+      };
+      stopPlayback();
+      rec.start();
+      recording = true; recStart = performance.now(); recTime.textContent = '0:00';
+      recTid = setInterval(tickRec, 250);
+      recBtn.textContent = '■ STOP'; recBtn.classList.add('primary'); recBtn.style.color = 'var(--accent)';
+      setStatus('Recording… hold the phone near the sound. Tap STOP when done (max ' + REC_MAX + 's).');
+    }
+    function stopRec() { if (mediaRec && mediaRec.state !== 'inactive') mediaRec.stop(); }
+    recBtn.addEventListener('click', () => recording ? stopRec() : startRec());
 
     analyzeBtn.addEventListener('click', async () => {
       if (!decoded) return;
